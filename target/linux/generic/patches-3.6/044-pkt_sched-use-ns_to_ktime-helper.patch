@@ -1,0 +1,56 @@
+From 46baac38ef633b08168d27df7b02eb14578fb760 Mon Sep 17 00:00:00 2001
+From: Eric Dumazet <edumazet@google.com>
+Date: Sat, 20 Oct 2012 00:40:51 +0000
+Subject: [PATCH 35839/37767] pkt_sched: use ns_to_ktime() helper
+
+ns_to_ktime() seems better than ktime_set() + ktime_add_ns()
+
+Signed-off-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ net/sched/sch_api.c |    9 ++++-----
+ net/sched/sch_cbq.c |    3 +--
+ 2 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/net/sched/sch_api.c b/net/sched/sch_api.c
+index a18d975..13cc744 100644
+--- a/net/sched/sch_api.c
++++ b/net/sched/sch_api.c
+@@ -495,16 +495,15 @@ EXPORT_SYMBOL(qdisc_watchdog_init);
+ 
+ void qdisc_watchdog_schedule(struct qdisc_watchdog *wd, psched_time_t expires)
+ {
+-	ktime_t time;
+-
+ 	if (test_bit(__QDISC_STATE_DEACTIVATED,
+ 		     &qdisc_root_sleeping(wd->qdisc)->state))
+ 		return;
+ 
+ 	qdisc_throttled(wd->qdisc);
+-	time = ktime_set(0, 0);
+-	time = ktime_add_ns(time, PSCHED_TICKS2NS(expires));
+-	hrtimer_start(&wd->timer, time, HRTIMER_MODE_ABS);
++
++	hrtimer_start(&wd->timer,
++		      ns_to_ktime(PSCHED_TICKS2NS(expires)),
++		      HRTIMER_MODE_ABS);
+ }
+ EXPORT_SYMBOL(qdisc_watchdog_schedule);
+ 
+diff --git a/net/sched/sch_cbq.c b/net/sched/sch_cbq.c
+index 564b9fc..0e19948 100644
+--- a/net/sched/sch_cbq.c
++++ b/net/sched/sch_cbq.c
+@@ -509,8 +509,7 @@ static void cbq_ovl_delay(struct cbq_class *cl)
+ 			cl->cpriority = TC_CBQ_MAXPRIO;
+ 			q->pmask |= (1<<TC_CBQ_MAXPRIO);
+ 
+-			expires = ktime_set(0, 0);
+-			expires = ktime_add_ns(expires, PSCHED_TICKS2NS(sched));
++			expires = ns_to_ktime(PSCHED_TICKS2NS(sched));
+ 			if (hrtimer_try_to_cancel(&q->delay_timer) &&
+ 			    ktime_to_ns(ktime_sub(
+ 					hrtimer_get_expires(&q->delay_timer),
+-- 
+1.7.9.5
+

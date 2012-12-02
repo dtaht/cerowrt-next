@@ -1,0 +1,53 @@
+From f54ba7798848ce1385a71b36a2c997422c82220a Mon Sep 17 00:00:00 2001
+From: "David S. Miller" <davem@davemloft.net>
+Date: Thu, 27 Sep 2012 18:35:47 -0400
+Subject: [PATCH 32902/37767] pkt_sched: Fix warning false positives.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+GCC refuses to recognize that all error control flows do in fact
+set err to something.
+
+Add an explicit initialization to shut it up.
+
+net/sched/sch_drr.c: In function ‘drr_enqueue’:
+net/sched/sch_drr.c:359:11: warning: ‘err’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+net/sched/sch_qfq.c: In function ‘qfq_enqueue’:
+net/sched/sch_qfq.c:885:11: warning: ‘err’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ net/sched/sch_drr.c |    2 +-
+ net/sched/sch_qfq.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sched/sch_drr.c b/net/sched/sch_drr.c
+index 9ce0b4f..71e50c8 100644
+--- a/net/sched/sch_drr.c
++++ b/net/sched/sch_drr.c
+@@ -352,7 +352,7 @@ static int drr_enqueue(struct sk_buff *skb, struct Qdisc *sch)
+ {
+ 	struct drr_sched *q = qdisc_priv(sch);
+ 	struct drr_class *cl;
+-	int err;
++	int err = 0;
+ 
+ 	cl = drr_classify(skb, sch, &err);
+ 	if (cl == NULL) {
+diff --git a/net/sched/sch_qfq.c b/net/sched/sch_qfq.c
+index e4723d3..2556620 100644
+--- a/net/sched/sch_qfq.c
++++ b/net/sched/sch_qfq.c
+@@ -878,7 +878,7 @@ static int qfq_enqueue(struct sk_buff *skb, struct Qdisc *sch)
+ {
+ 	struct qfq_sched *q = qdisc_priv(sch);
+ 	struct qfq_class *cl;
+-	int err;
++	int err = 0;
+ 
+ 	cl = qfq_classify(skb, sch, &err);
+ 	if (cl == NULL) {
+-- 
+1.7.9.5
+
