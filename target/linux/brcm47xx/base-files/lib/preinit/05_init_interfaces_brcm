@@ -21,11 +21,12 @@ check_module () {
 
   insmod "$module" "$params"
   sleep 1
-  grep "^$module" /proc/modules
+  grep "^$module" /proc/modules > /dev/null
   return $?
 }
 
 init_iface() {
+	check_module hwmon
 	check_module tg3
 	insmod switch-core
 	check_module switch-robo || check_module switch-adm  || {
