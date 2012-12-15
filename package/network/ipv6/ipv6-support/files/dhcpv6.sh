@@ -24,14 +24,9 @@ done
 
 
 # Enable relaying if requested
-local prefix_fallback
-config_get prefix_fallback "$network" prefix_fallback
-[ "$prefix_fallback" == "relay" -a -z "$PREFIXES" -a "$state" != "unbound" ] &&
-	restart_relay "$network" "fallback"
-
-# Disable relay if requested
-[ "$prefix_fallback" != "relay" -o -n "$PREFIXES" -o "$state" == "unbound" ] &&
-	restart_relay "$network"
+local fallback="stop"
+[ -z "$PREFIXES" -a "$state" != "unbound" ] && fallback="start"
+setup_prefix_fallback "$fallback" "$network" "$device"
 
 
 # Operations in case of success
@@ -39,8 +34,9 @@ config_get prefix_fallback "$network" prefix_fallback
 
 local peerdns
 config_get_bool peerdns "$network" peerdns 0
-[ "peerdns" -eq "1" ] && {
+[ "$peerdns" -eq "1" ] && {
 	proto_init_update "*" 1
+	proto_set_keep 1
 	for server in $RDNSS; do
 		proto_add_dns_server "$server"
 	done
