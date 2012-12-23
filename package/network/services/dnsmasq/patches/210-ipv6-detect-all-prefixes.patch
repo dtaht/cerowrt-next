@@ -1,0 +1,14 @@
+Index: dnsmasq-2.66test3/src/dhcp6.c
+===================================================================
+--- dnsmasq-2.66test3.orig/src/dhcp6.c	2012-12-21 17:53:15.000000000 +0100
++++ dnsmasq-2.66test3/src/dhcp6.c	2012-12-22 12:15:47.575883314 +0100
+@@ -514,8 +514,7 @@
+ 	  }
+ 	
+       }
+-    else if (strcmp(ifrn_name, template->template_interface) == 0 &&
+-	     addr6part(local) == addr6part(&template->start6))
++    else if (strcmp(ifrn_name, template->template_interface) == 0)
+       {
+ 	start6 = *local;
+ 	setaddr6part(&start6, addr6part(&template->start6));

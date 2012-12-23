@@ -1,0 +1,17 @@
+Index: dnsmasq-2.66test3/src/radv.c
+===================================================================
+--- dnsmasq-2.66test3.orig/src/radv.c	2012-12-22 12:27:24.196018538 +0100
++++ dnsmasq-2.66test3/src/radv.c	2012-12-22 12:29:16.968038704 +0100
+@@ -85,7 +85,11 @@
+       setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &val, sizeof(val)) ||
+       setsockopt(fd, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter)) == -1)
+     die (_("cannot create ICMPv6 socket: %s"), NULL, EC_BADNET);
+-  
++
++   /* Disable RA looping */
++   int zero = 0;
++   setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &zero, sizeof(zero));
++
+    daemon->icmp6fd = fd;
+    
+    ra_start_unsolicted(now, NULL);
