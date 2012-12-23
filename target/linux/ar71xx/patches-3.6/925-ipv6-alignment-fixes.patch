@@ -1,0 +1,96 @@
+diff --git a/net/ipv6/datagram.c b/net/ipv6/datagram.c
+index 19e7aa0..6cbd2b7 100644
+--- a/net/ipv6/datagram.c
++++ b/net/ipv6/datagram.c
+@@ -492,7 +492,7 @@ int datagram_recv_ctl(struct sock *sk, struct msghdr *msg, struct sk_buff *skb)
+ 		put_cmsg(msg, SOL_IPV6, IPV6_TCLASS, sizeof(tclass), &tclass);
+ 	}
+ 
+-	if (np->rxopt.bits.rxflow && (*(__be32 *)nh & IPV6_FLOWINFO_MASK)) {
++	if (np->rxopt.bits.rxflow && (__get_unaligned_cpu32((__be32 *)nh) & IPV6_FLOWINFO_MASK)) {
+ 		__be32 flowinfo = __get_unaligned_cpu32((__be32 *)nh) & IPV6_FLOWINFO_MASK;
+ 		put_cmsg(msg, SOL_IPV6, IPV6_FLOWINFO, sizeof(flowinfo), &flowinfo);
+ 	}
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index 5b2d63e..b6689e3 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -221,7 +221,9 @@ int ip6_xmit(struct sock *sk, struct sk_buff *skb, struct flowi6 *fl6,
+ 	if (hlimit < 0)
+ 		hlimit = ip6_dst_hoplimit(dst);
+ 
+-	*(__be32 *)hdr = htonl(0x60000000 | (tclass << 20)) | fl6->flowlabel;
++	__put_unaligned_cpu32(htonl(0x60000000 | (tclass << 20))
++			      | fl6->flowlabel,
++		              (__be32*)hdr);
+ 
+ 	hdr->payload_len = htons(seg_len);
+ 	hdr->nexthdr = proto;
+@@ -272,7 +274,7 @@ int ip6_nd_hdr(struct sock *sk, struct sk_buff *skb, struct net_device *dev,
+ 	skb_put(skb, sizeof(struct ipv6hdr));
+ 	hdr = ipv6_hdr(skb);
+ 
+-	*(__be32*)hdr = htonl(0x60000000);
++	__put_unaligned_cpu32(htonl(0x60000000), (__be32*)hdr);
+ 
+ 	hdr->payload_len = htons(len);
+ 	hdr->nexthdr = proto;
+@@ -1635,8 +1637,9 @@ int ip6_push_pending_frames(struct sock *sk)
+ 	skb_reset_network_header(skb);
+ 	hdr = ipv6_hdr(skb);
+ 
+-	*(__be32*)hdr = fl6->flowlabel |
+-		     htonl(0x60000000 | ((int)np->cork.tclass << 20));
++	__put_unaligned_cpu32(fl6->flowlabel |
++			      htonl(0x60000000 | ((int)np->cork.tclass << 20)),
++			      (__be32*)hdr);
+ 
+ 	hdr->hop_limit = np->cork.hop_limit;
+ 	hdr->nexthdr = proto;
+diff --git a/net/ipv6/ip6_tunnel.c b/net/ipv6/ip6_tunnel.c
+index 9a1d5fe..455ea7f 100644
+--- a/net/ipv6/ip6_tunnel.c
++++ b/net/ipv6/ip6_tunnel.c
+@@ -997,7 +997,7 @@ static int ip6_tnl_xmit2(struct sk_buff *skb,
+ 	skb_push(skb, sizeof(struct ipv6hdr));
+ 	skb_reset_network_header(skb);
+ 	ipv6h = ipv6_hdr(skb);
+-	*(__be32*)ipv6h = fl6->flowlabel | htonl(0x60000000);
++	__put_unaligned_cpu32(fl6->flowlabel | htonl(0x60000000), (__be32*)ipv6h);
+ 	dsfield = INET_ECN_encapsulate(0, dsfield);
+ 	ipv6_change_dsfield(ipv6h, ~INET_ECN_MASK, dsfield);
+ 	ipv6h->hop_limit = t->parms.hop_limit;
+@@ -1103,9 +1103,9 @@ ip6ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev)
+ 
+ 	dsfield = ipv6_get_dsfield(ipv6h);
+ 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_TCLASS)
+-		fl6.flowlabel |= (*(__be32 *) ipv6h & IPV6_TCLASS_MASK);
++		fl6.flowlabel |= (__get_unaligned_cpu32((__be32 *) ipv6h) & IPV6_TCLASS_MASK);
+ 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FLOWLABEL)
+-		fl6.flowlabel |= (*(__be32 *) ipv6h & IPV6_FLOWLABEL_MASK);
++		fl6.flowlabel |= (__get_unaligned_cpu32((__be32 *) ipv6h) & IPV6_FLOWLABEL_MASK);
+ 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FWMARK)
+ 		fl6.flowi6_mark = skb->mark;
+ 
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 3e350eb..c2787a1 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -1117,7 +1117,7 @@ void ip6_update_pmtu(struct sk_buff *skb, struct net *net, __be32 mtu,
+ 	fl6.flowi6_flags = 0;
+ 	fl6.daddr = iph->daddr;
+ 	fl6.saddr = iph->saddr;
+-	fl6.flowlabel = (*(__be32 *) iph) & IPV6_FLOWINFO_MASK;
++	fl6.flowlabel = __get_unaligned_cpu32((__be32 *) iph) & IPV6_FLOWINFO_MASK;
+ 
+ 	dst = ip6_route_output(net, NULL, &fl6);
+ 	if (!dst->error)
+@@ -1145,7 +1145,7 @@ void ip6_redirect(struct sk_buff *skb, struct net *net, int oif, u32 mark)
+ 	fl6.flowi6_flags = 0;
+ 	fl6.daddr = iph->daddr;
+ 	fl6.saddr = iph->saddr;
+-	fl6.flowlabel = (*(__be32 *) iph) & IPV6_FLOWINFO_MASK;
++	fl6.flowlabel = __get_unaligned_cpu32((__be32 *) iph) & IPV6_FLOWINFO_MASK;
+ 
+ 	dst = ip6_route_output(net, NULL, &fl6);
+ 	if (!dst->error)
