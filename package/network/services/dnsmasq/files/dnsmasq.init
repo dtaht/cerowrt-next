@@ -479,6 +479,10 @@ start() {
 		xappend "--conf-file=/etc/dnsmasq.conf"
 	}
 
+	[ -d /var/etc/dnsmasq.d ] && {
+		xappend "--conf-dir=/var/etc/dnsmasq.d"
+	}
+
 	args=""
 	config_foreach dnsmasq dnsmasq
 	config_foreach dhcp_host_add host

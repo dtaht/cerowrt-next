@@ -1,0 +1,125 @@
+* Finished stuff
+** DONE HDMI cable
+  CLOSED: [2012-12-01 Sat 11:09]
+  :LOGBOOK:
+  - State "DONE"       from "STARTED"    [2012-12-01 Sat 11:09]
+  - State "STARTED"    from "TODO"       [2012-12-01 Sat 11:09]
+  :END:
+** Plug in keyboard
+** Plug in monitor
+** DONE Reboot
+  CLOSED: [2012-11-29 Thu 15:06]
+  :LOGBOOK:
+  - State "DONE"       from "STARTED"    [2012-11-29 Thu 15:06]
+  - State "STARTED"    from "TODO"       [2012-11-29 Thu 15:06]
+  :END:
+** DONE Get a better hub
+** DONE Fix netperf-wrapper
+** DONE update netperf
+** DONE Update and Patch iproute2
+  CLOSED: [2012-12-05 Wed 18:58]
+  :LOGBOOK:
+  - State "DONE"       from "STARTED"    [2012-12-05 Wed 18:58]
+  - State "STARTED"    from "TODO"       [2012-12-05 Wed 18:58]
+  :END:
+** DONE update dropbear-xinetd
+** DONE update bind-latest
+  CLOSED: [2012-12-05 Wed 19:29]
+  :LOGBOOK:
+  - State "DONE"       from "STARTED"    [2012-12-05 Wed 19:29]
+  - State "STARTED"    from "TODO"       [2012-12-05 Wed 19:29]
+  :END:
+** DONE Patch ipv6 fixes to stack
+  Not clear what other backports are needed
+* Infrastructure issues
+** TODO propagate DNS for california/london/germany/russia test servers
+** TODO setup test with lincs
+*** TODO figure out problem with TCP-LEDBAT module
+*** TODO establish testbed
+** TODO setup test with comcast
+*** TODO establish testbed
+** TODO Update my kernel to 3.6.9
+** TODO Patch other stuff
+  ????
+* Initial Release Blockers
+** TODO Fix mac80211.sh - wifi detect broken
+** TODO Check initial boot sequence
+** TODO Make ahcp client work better
+** DONE Fix shadow passwords
+** TODO Find new ipv6 stuff that openwrt is using
+** TODO Kill Radvd finally
+** DONE Update dnsmasq to 2.64
+** DONE Build dnsmasq + dhpc6
+** TODO Review bug list
+** DONE Add TCP algos to build
+   added lp, vegas, reno (I hope)
+** TODO update credits file for donors
+** TODO Fix iptables - It's ANCIENT! 1.4.10! (Needed for ipv6 npt66)
+* Big work pending
+** Security Related
+*** TODO Lost package signing - rejected by openwrt as too big
+*** TODO Make xinetd sensors smarter
+**** Sense evil DNS attempts on external port and log and block
+**** Sense evil internal machines and block/redirect
+*** TODO Make more services (lighttpd?) Run from xinetd or equivalent
+*** TODO containerize/chroot/secure more services
+*** TODO Get DNSSEC working in dnsmasq
+*** TODO Bug #113 - fix dnsval and ntp
+*** TODO Add more randomness/entropy throughout system
+*** TODO Add SSL support to configuration server
+** Queuing
+*** TODO make nfq_codel do background traffic
+*** TODO Configure TCP small queues better (?)
+*** TODO UDP small queues???
+** Routing
+*** TODO Finish dnsmasq + ahcp
+*** TODO Fix gui for ceroshaper
+*** TODO Update quagga to do atomic route update
+*** TODO Update babeld to do atomic route update
+** IPv6
+*** TODO NPT-66 support
+** DELG TCP fast open support
+** Misc
+*** TODO check for missing patches from 3.3.8
+*** TODO Re-Evaluate Higher (clockless) HZ and relevant patch
+*** TODO Check for unaligned instructions on ipv6
+*** TODO Evaluate alternatives to lighttpd
+* RRUL Test Development
+** TODO Write html + json parser for netperf-wrapper tests
+** TODO Think about native, lightweight, router based version
+** TODO get decent voip simulation
+** TODO get sane mtr parsing
+** TODO get videoconferencing sim
+** TODO get typical web traffic sim
+* More Test boxes?
+** Guruplug
+** Raspberri Pi
+** WNDR 3500bgn
+* Draft Release notes:
+
+Updates to ccnx, bind-latest, dnsmasq, iproute2, iptables, a dozen more.
+DNS security hole closed
+Linux 3.6.9 + Additional Kernel patches for limiting skb size in qdiscs under load, ns2_codel, nfq_codel, diffserv prioritization for wifi
+QFQ+ added
+BFQ I/O scheduler (used in cyanogenmod) installed but not default. 
+
+* TODO Fix ahcp for ubnt build
+** Nat AP by default for ipv4, route ipv6
+** Generate IPv6 ULA and distribute
+** Get DHCP-PD delegation
+** Acquire addresses on ethernet and wireless
+        option ipaddr '172.27.223.1'
+        option netmask '255.255.255.0'
+        option dns '172.20.33.1'      
+        option dns '172.20.2.1'       
+                                      
+config interface 'wan'                  
+        option ifname 'wlan0'   
+        option proto 'static'  
+        option ipaddr '172.27.224.1' 
+        option netmask '255.255.255.0'
+                                      
+config interface 'wan2'               
+        option ifname 'wlan0-1'       
+        option proto 'static'         
+        option ipaddr '172.28.224.1'

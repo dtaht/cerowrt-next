@@ -1766,6 +1766,7 @@ index 0000000..105f353
 +	}
 +	qdisc_bstats_update(sch, skb);
 +	flow->deficit -= qdisc_pkt_len(skb);
++	list_move_tail(&flow->flowchain, head);
 +	/* We cant call qdisc_tree_decrease_qlen() if our qlen is 0,
 +	 * or HTB crashes. Defer it for next round.
 +	 */
