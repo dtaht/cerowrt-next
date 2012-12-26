@@ -1,6 +1,6 @@
 --- a/arch/powerpc/kernel/Makefile
 +++ b/arch/powerpc/kernel/Makefile
-@@ -125,9 +125,11 @@ obj-$(CONFIG_FSL_EMB_PERF_EVENT_E500) +=
+@@ -118,9 +118,11 @@ obj-$(CONFIG_FTRACE_SYSCALLS)	+= ftrace.
  
  obj-$(CONFIG_8XX_MINIMAL_FPEMU) += softemu8xx.o
  
@@ -24,7 +24,7 @@
  obj-$(CONFIG_MPC836x_MDS)	+= mpc836x_mds.o
 --- a/arch/powerpc/platforms/Kconfig
 +++ b/arch/powerpc/platforms/Kconfig
-@@ -175,6 +175,10 @@ config PPC_INDIRECT_MMIO
+@@ -191,6 +191,10 @@ config PPC_INDIRECT_MMIO
  config PPC_IO_WORKAROUNDS
  	bool
  
@@ -37,12 +37,13 @@
  menu "CPU Frequency drivers"
 --- a/arch/powerpc/sysdev/Makefile
 +++ b/arch/powerpc/sysdev/Makefile
-@@ -65,3 +65,5 @@ obj-$(CONFIG_PPC_SCOM)		+= scom.o
- subdir-ccflags-$(CONFIG_PPC_WERROR) := -Werror
- 
+@@ -69,3 +69,6 @@ subdir-ccflags-$(CONFIG_PPC_WERROR) := -
  obj-$(CONFIG_PPC_XICS)		+= xics/
+ 
+ obj-$(CONFIG_GE_FPGA)		+= ge/
 +
 +obj-$(CONFIG_RB_IOMAP)		+= rb_iomap.o
++
 --- /dev/null
 +++ b/arch/powerpc/sysdev/rb_iomap.c
 @@ -0,0 +1,204 @@

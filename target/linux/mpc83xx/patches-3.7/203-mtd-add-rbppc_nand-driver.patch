@@ -1,6 +1,6 @@
 --- a/drivers/mtd/nand/Kconfig
 +++ b/drivers/mtd/nand/Kconfig
-@@ -436,6 +436,13 @@ config MTD_NAND_PLATFORM
+@@ -454,6 +454,13 @@ config MTD_NAND_PLATFORM
  	  devices. You will need to provide platform-specific functions
  	  via platform_data.
  
@@ -16,7 +16,7 @@
  	depends on USB
 --- a/drivers/mtd/nand/Makefile
 +++ b/drivers/mtd/nand/Makefile
-@@ -33,6 +33,7 @@ obj-$(CONFIG_MTD_NAND_CM_X270)		+= cmx27
+@@ -34,6 +34,7 @@ obj-$(CONFIG_MTD_NAND_CM_X270)		+= cmx27
  obj-$(CONFIG_MTD_NAND_PXA3xx)		+= pxa3xx_nand.o
  obj-$(CONFIG_MTD_NAND_TMIO)		+= tmio_nand.o
  obj-$(CONFIG_MTD_NAND_PLATFORM)		+= plat_nand.o
@@ -26,7 +26,7 @@
  obj-$(CONFIG_MTD_NAND_ORION)		+= orion_nand.o
 --- /dev/null
 +++ b/drivers/mtd/nand/rbppc_nand.c
-@@ -0,0 +1,251 @@
+@@ -0,0 +1,250 @@
 +/*
 + * Copyright (C) 2008-2009 Noah Fontes <nfontes@transtruct.org>
 + * Copyright (C) 2009 Michael Guntsche <mike@it-loops.com>
@@ -227,7 +227,6 @@
 +	rnand.ecc.mode = NAND_ECC_SOFT;
 +	rnand.ecc.layout = &rbppc_nand_oob_16;
 +	rnand.chip_delay = 25;
-+	rnand.options |= NAND_NO_AUTOINCR;
 +	rmtd.priv = &rnand;
 +	rmtd.owner = THIS_MODULE;
 +

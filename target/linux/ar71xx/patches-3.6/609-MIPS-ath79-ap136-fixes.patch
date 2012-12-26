@@ -56,40 +56,16 @@
  
  static struct gpio_led ap136_leds_gpio[] __initdata = {
  	{
-@@ -98,63 +104,106 @@ static struct gpio_keys_button ap136_gpi
+@@ -98,64 +104,136 @@ static struct gpio_keys_button ap136_gpi
  	},
  };
  
 -static struct ath79_spi_controller_data ap136_spi0_data = {
 -	.cs_type = ATH79_SPI_CS_TYPE_INTERNAL,
 -	.cs_line = 0,
-+static struct ar8327_pad_cfg ap136_ar8327_pad0_cfg = {
-+	.mode = AR8327_PAD_MAC_RGMII,
-+	.txclk_delay_en = true,
-+	.rxclk_delay_en = true,
-+	.txclk_delay_sel = AR8327_CLK_DELAY_SEL1,
-+	.rxclk_delay_sel = AR8327_CLK_DELAY_SEL2,
- };
- 
--static struct spi_board_info ap136_spi_info[] = {
--	{
--		.bus_num	= 0,
--		.chip_select	= 0,
--		.max_speed_hz	= 25000000,
--		.modalias	= "mx25l6405d",
--		.controller_data = &ap136_spi0_data,
--	}
-+static struct ar8327_pad_cfg ap136_ar8327_pad6_cfg = {
-+	.mode = AR8327_PAD_MAC_SGMII,
-+	.txclk_delay_en = false,
-+	.rxclk_delay_en = true,
-+	.txclk_delay_sel = AR8327_CLK_DELAY_SEL0,
-+	.rxclk_delay_sel = AR8327_CLK_DELAY_SEL0,
- };
- 
--static struct ath79_spi_platform_data ap136_spi_data = {
--	.bus_num	= 0,
--	.num_chipselect	= 1,
++static struct ar8327_pad_cfg ap136_ar8327_pad0_cfg;
++static struct ar8327_pad_cfg ap136_ar8327_pad6_cfg;
++
 +static struct ar8327_platform_data ap136_ar8327_data = {
 +	.pad0_cfg = &ap136_ar8327_pad0_cfg,
 +	.pad6_cfg = &ap136_ar8327_pad6_cfg,
@@ -109,37 +85,49 @@
 +	},
  };
  
--#ifdef CONFIG_PCI
--static struct ath9k_platform_data ap136_ath9k_data;
+-static struct spi_board_info ap136_spi_info[] = {
 +static struct mdio_board_info ap136_mdio0_info[] = {
-+	{
+ 	{
+-		.bus_num	= 0,
+-		.chip_select	= 0,
+-		.max_speed_hz	= 25000000,
+-		.modalias	= "mx25l6405d",
+-		.controller_data = &ap136_spi0_data,
+-	}
 +		.bus_id = "ag71xx-mdio.0",
 +		.phy_addr = 0,
 +		.platform_data = &ap136_ar8327_data,
 +	},
-+};
+ };
  
--static int ap136_pci_plat_dev_init(struct pci_dev *dev)
+-static struct ath79_spi_platform_data ap136_spi_data = {
+-	.bus_num	= 0,
+-	.num_chipselect	= 1,
+-};
 +static void __init ap136_gmac_setup(void)
- {
--	if (dev->bus->number == 1 && (PCI_SLOT(dev->devfn)) == 0)
--		dev->dev.platform_data = &ap136_ath9k_data;
++{
 +	void __iomem *base;
 +	u32 t;
  
+-#ifdef CONFIG_PCI
+-static struct ath9k_platform_data ap136_ath9k_data;
++	base = ioremap(QCA955X_GMAC_BASE, QCA955X_GMAC_SIZE);
+ 
+-static int ap136_pci_plat_dev_init(struct pci_dev *dev)
+-{
+-	if (dev->bus->number == 1 && (PCI_SLOT(dev->devfn)) == 0)
+-		dev->dev.platform_data = &ap136_ath9k_data;
++	t = __raw_readl(base + QCA955X_GMAC_REG_ETH_CFG);
+ 
 -	return 0;
 -}
-+	base = ioremap(QCA955X_GMAC_BASE, QCA955X_GMAC_SIZE);
++	t &= ~(QCA955X_ETH_CFG_RGMII_EN | QCA955X_ETH_CFG_GE0_SGMII);
++	t |= QCA955X_ETH_CFG_RGMII_EN;
  
 -static void __init ap136_pci_init(u8 *eeprom)
 -{
 -	memcpy(ap136_ath9k_data.eeprom_data, eeprom,
 -	       sizeof(ap136_ath9k_data.eeprom_data));
-+	t = __raw_readl(base + QCA955X_GMAC_REG_ETH_CFG);
-+
-+	t &= ~(QCA955X_ETH_CFG_RGMII_EN | QCA955X_ETH_CFG_GE0_SGMII);
-+	t |= QCA955X_ETH_CFG_RGMII_EN;
-+
 +	__raw_writel(t, base + QCA955X_GMAC_REG_ETH_CFG);
  
 -	ath79_pci_set_plat_dev_init(ap136_pci_plat_dev_init);
@@ -150,7 +138,8 @@
 -static inline void ap136_pci_init(void) {}
 -#endif /* CONFIG_PCI */
  
- static void __init ap136_setup(void)
+-static void __init ap136_setup(void)
++static void __init ap136_common_setup(void)
  {
  	u8 *art = (u8 *) KSEG1ADDR(0x1fff0000);
  
@@ -179,21 +168,78 @@
 +	mdiobus_register_board_info(ap136_mdio0_info,
 +				    ARRAY_SIZE(ap136_mdio0_info));
 +
-+	/* GMAC0 is connected to GMAC0 of the AR8327 switch via RGMII */
++	/* GMAC0 is connected to the RMGII interface */
 +	ath79_eth0_data.phy_if_mode = PHY_INTERFACE_MODE_RGMII;
 +	ath79_eth0_data.phy_mask = BIT(0);
 +	ath79_eth0_data.mii_bus_dev = &ath79_mdio0_device.dev;
-+	ath79_eth0_pll_data.pll_1000 = 0xa6000000;
 +
 +	ath79_register_eth(0);
 +
-+	/* GMAC1 is connected to GMAC6 of the AR8327 switch via SGMII */
++	/* GMAC1 is connected tot eh SGMII interface */
 +	ath79_eth1_data.phy_if_mode = PHY_INTERFACE_MODE_SGMII;
 +	ath79_eth1_data.speed = SPEED_1000;
 +	ath79_eth1_data.duplex = DUPLEX_FULL;
-+	ath79_eth1_pll_data.pll_1000 = 0x03000101;
 +
 +	ath79_register_eth(1);
++}
++
++static void __init ap136_010_setup(void)
++{
++	/* GMAC0 of the AR8327 switch is connected to GMAC0 via RGMII */
++	ap136_ar8327_pad0_cfg.mode = AR8327_PAD_MAC_RGMII;
++	ap136_ar8327_pad0_cfg.txclk_delay_en = true;
++	ap136_ar8327_pad0_cfg.rxclk_delay_en = true;
++	ap136_ar8327_pad0_cfg.txclk_delay_sel = AR8327_CLK_DELAY_SEL1;
++	ap136_ar8327_pad0_cfg.rxclk_delay_sel = AR8327_CLK_DELAY_SEL2;
++
++	/* GMAC6 of the AR8327 switch is connected to GMAC1 via SGMII */
++	ap136_ar8327_pad6_cfg.mode = AR8327_PAD_MAC_SGMII;
++	ap136_ar8327_pad6_cfg.rxclk_delay_en = true;
++	ap136_ar8327_pad6_cfg.rxclk_delay_sel = AR8327_CLK_DELAY_SEL0;
++
++	ath79_eth0_pll_data.pll_1000 = 0xa6000000;
++	ath79_eth1_pll_data.pll_1000 = 0x03000101;
++
++	ap136_common_setup();
++}
++
++MIPS_MACHINE(ATH79_MACH_AP136_010, "AP136-010",
++	     "Atheros AP136-010 reference board",
++	     ap136_010_setup);
++
++static void __init ap136_020_setup(void)
++{
++	/* GMAC0 of the AR8327 switch is connected to GMAC1 via SGMII */
++	ap136_ar8327_pad0_cfg.mode = AR8327_PAD_MAC_SGMII;
++	ap136_ar8327_pad0_cfg.sgmii_delay_en = true;
++
++	/* GMAC6 of the AR8327 switch is connected to GMAC0 via RGMII */
++	ap136_ar8327_pad6_cfg.mode = AR8327_PAD_MAC_RGMII;
++	ap136_ar8327_pad6_cfg.txclk_delay_en = true;
++	ap136_ar8327_pad6_cfg.rxclk_delay_en = true;
++	ap136_ar8327_pad6_cfg.txclk_delay_sel = AR8327_CLK_DELAY_SEL1;
++	ap136_ar8327_pad6_cfg.rxclk_delay_sel = AR8327_CLK_DELAY_SEL2;
++
++	ath79_eth0_pll_data.pll_1000 = 0x56000000;
++	ath79_eth1_pll_data.pll_1000 = 0x03000101;
++
++	ap136_common_setup();
  }
  
- MIPS_MACHINE(ATH79_MACH_AP136, "AP136", "Atheros AP136 reference board",
+-MIPS_MACHINE(ATH79_MACH_AP136, "AP136", "Atheros AP136 reference board",
+-	     ap136_setup);
++MIPS_MACHINE(ATH79_MACH_AP136_020, "AP136-020",
++	     "Atheros AP136-020 reference board",
++	     ap136_020_setup);
+--- a/arch/mips/ath79/machtypes.h
++++ b/arch/mips/ath79/machtypes.h
+@@ -18,7 +18,8 @@ enum ath79_mach_type {
+ 	ATH79_MACH_GENERIC = 0,
+ 	ATH79_MACH_AP121,		/* Atheros AP121 reference board */
+ 	ATH79_MACH_AP121_MINI,		/* Atheros AP121-MINI reference board */
+-	ATH79_MACH_AP136,		/* Atheros AP136 reference board */
++	ATH79_MACH_AP136_010,		/* Atheros AP136-010 reference board */
++	ATH79_MACH_AP136_020,		/* Atheros AP136-020 reference board */
+ 	ATH79_MACH_AP81,		/* Atheros AP81 reference board */
+ 	ATH79_MACH_DB120,		/* Atheros DB120 reference board */
+ 	ATH79_MACH_PB44,		/* Atheros PB44 reference board */
