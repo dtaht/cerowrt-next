@@ -1,6 +1,6 @@
 --- a/drivers/watchdog/Kconfig
 +++ b/drivers/watchdog/Kconfig
-@@ -943,6 +943,18 @@ config RC32434_WDT
+@@ -972,6 +972,18 @@ config RC32434_WDT
  	  To compile this driver as a module, choose M here: the
  	  module will be called rc32434_wdt.
  

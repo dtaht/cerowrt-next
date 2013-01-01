@@ -1,6 +1,6 @@
 --- a/drivers/leds/Kconfig
 +++ b/drivers/leds/Kconfig
-@@ -498,4 +498,12 @@ config LEDS_TRIGGER_USBDEV
+@@ -555,4 +555,12 @@ config LEDS_TRIGGER_USBDEV
  	  This allows LEDs to be controlled by the presence/activity of
  	  an USB device. If unsure, say N.
  
@@ -15,7 +15,7 @@
  endif # NEW_LEDS
 --- a/drivers/leds/Makefile
 +++ b/drivers/leds/Makefile
-@@ -60,3 +60,4 @@ obj-$(CONFIG_LEDS_TRIGGER_DEFAULT_ON)	+=
+@@ -66,3 +66,4 @@ obj-$(CONFIG_LEDS_TRIGGER_TRANSIENT)	+=
  obj-$(CONFIG_LEDS_TRIGGER_MORSE)	+= ledtrig-morse.o
  obj-$(CONFIG_LEDS_TRIGGER_NETDEV)	+= ledtrig-netdev.o
  obj-$(CONFIG_LEDS_TRIGGER_USBDEV)	+= ledtrig-usbdev.o

@@ -1,6 +1,6 @@
 --- a/drivers/mtd/maps/Kconfig
 +++ b/drivers/mtd/maps/Kconfig
-@@ -526,4 +526,8 @@ config MTD_LATCH_ADDR
+@@ -515,4 +515,8 @@ config MTD_LATCH_ADDR
  
            If compiled as a module, it will be called latch-addr-flash.
  

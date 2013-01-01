@@ -1,8 +1,8 @@
 --- a/drivers/amba/bus.c
 +++ b/drivers/amba/bus.c
 @@ -20,6 +20,10 @@
+ 
  #include <asm/irq.h>
- #include <asm/sizes.h>
  
 +#ifndef NO_IRQ
 +#define NO_IRQ		(-1)

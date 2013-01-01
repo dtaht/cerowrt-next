@@ -1,6 +1,6 @@
 --- a/drivers/net/Kconfig
 +++ b/drivers/net/Kconfig
-@@ -247,6 +247,10 @@ source "drivers/net/dsa/Kconfig"
+@@ -255,6 +255,10 @@ source "drivers/net/dsa/Kconfig"
  
  source "drivers/net/ethernet/Kconfig"
  
@@ -13,7 +13,7 @@
  source "drivers/net/hippi/Kconfig"
 --- a/drivers/net/Makefile
 +++ b/drivers/net/Makefile
-@@ -32,6 +32,7 @@ obj-$(CONFIG_CAN) += can/
+@@ -33,6 +33,7 @@ obj-$(CONFIG_CAN) += can/
  obj-$(CONFIG_ETRAX_ETHERNET) += cris/
  obj-$(CONFIG_NET_DSA) += dsa/
  obj-$(CONFIG_ETHERNET) += ethernet/

@@ -1,6 +1,6 @@
 --- a/arch/mips/Kconfig
 +++ b/arch/mips/Kconfig
-@@ -39,6 +39,23 @@ choice
+@@ -46,6 +46,24 @@ choice
  	prompt "System type"
  	default SGI_IP22
  
@@ -20,11 +20,12 @@
 +	select ARCH_REQUIRE_GPIOLIB
 +	select SWAP_IO_SPACE if CPU_BIG_ENDIAN
 +	select MIPS_MACHINE
++	select HAVE_CLK
 +
  config MIPS_ALCHEMY
  	bool "Alchemy processor based machines"
  	select 64BIT_PHYS_ADDR
-@@ -813,6 +830,7 @@ config NLM_XLP_BOARD
+@@ -837,6 +855,7 @@ config NLM_XLP_BOARD
  
  endchoice
  

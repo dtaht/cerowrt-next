@@ -23,7 +23,7 @@
  	depends on USB
 --- a/drivers/usb/host/Makefile
 +++ b/drivers/usb/host/Makefile
-@@ -19,6 +19,7 @@ obj-$(CONFIG_USB_WHCI_HCD)	+= whci/
+@@ -23,6 +23,7 @@ obj-$(CONFIG_USB_WHCI_HCD)	+= whci/
  
  obj-$(CONFIG_PCI)		+= pci-quirks.o
  
