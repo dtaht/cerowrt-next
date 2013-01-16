@@ -4,8 +4,12 @@ uci -q batch <<-EOF >/dev/null
 	set network.globals.ula_prefix=auto
 	set network.wan6=interface
 	set network.wan6.proto=dhcpv6
-	set network.wan6.ifname=@wan
-	set network.lan.ip6assign=64
+	set network.wan6.ifname=@ge00
+	set network.se00.ip6assign=64
+	set network.sw00.ip6assign=64
+	set network.sw10.ip6assign=64
+	set network.gw00.ip6assign=64
+	set network.gw10.ip6assign=64
 	set network.wan.ipv6=1
 	commit network
 EOF
