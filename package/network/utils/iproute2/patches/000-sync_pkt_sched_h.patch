@@ -1,6 +1,6 @@
 --- a/include/linux/pkt_sched.h
 +++ b/include/linux/pkt_sched.h
-@@ -193,6 +193,33 @@ struct tc_sfq_xstats {
+@@ -214,6 +214,33 @@ struct tc_sfq_xstats {
  	__s32		allot;
  };
  
@@ -34,4 +34,3 @@
  /* RED section */
  
  enum {
- 
