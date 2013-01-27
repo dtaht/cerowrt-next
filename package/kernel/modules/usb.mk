@@ -818,6 +818,23 @@ endef
 
 $(eval $(call KernelPackage,usb-hid))
 
+define KernelPackage/usb-hid-generic
+  TITLE:=Support for USB Human Input Devices
+  KCONFIG:=CONFIG_HID_SUPPORT=y CONFIG_USB_HID CONFIG_USB_HIDDEV=y CONFIG_HID_GENERIC
+  FILES:=$(LINUX_DIR)/drivers/hid/hid-generic.ko
+  AUTOLOAD:=$(call AutoLoad,70,hid-generic)
+  $(call AddDepends/usb)
+  $(call AddDepends/hid)
+  $(call AddDepends/input,+kmod-input-evdev)
+endef
+
+
+define KernelPackage/usb-hid-generic/description
+ Kernel support for generic USB HID devices such as upses
+endef
+
+$(eval $(call KernelPackage,usb-hid-generic))
+
 
 define KernelPackage/usb-yealink
   TITLE:=USB Yealink VOIP phone
