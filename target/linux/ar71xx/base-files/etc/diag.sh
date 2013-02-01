@@ -36,6 +36,9 @@ get_status_led() {
 	all0305)
 		status_led="eap7660d:green:ds4"
 		;;
+	ap132)
+		status_led="ap132:green:status"
+		;;
 	ap136-010|\
 	ap136-020)
 		status_led="ap136:green:status"
@@ -72,6 +75,9 @@ get_status_led() {
 		status_led="d-link:green:status"
 		;;
 	dir-825-b1)
+		status_led="d-link:orange:power"
+		;;
+	dir-825-c1)
 		status_led="d-link:orange:power"
 		;;
 	eap7660d)

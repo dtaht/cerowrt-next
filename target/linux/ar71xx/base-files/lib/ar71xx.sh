@@ -87,6 +87,9 @@ tplink_board_detect() {
 	"074300"*)
 		model="TP-Link TL-WR743N/ND"
 		;;
+	"080100"*)
+		model="TP-Link TL-WA801N/ND"
+		;;
 	"084100"*)
 		model="TP-Link TL-WR841N/ND"
 		;;
@@ -174,6 +177,9 @@ ar71xx_board_detect() {
 	*AP121-MINI)
 		name="ap121-mini"
 		;;
+	*"AP132 reference board")
+		name="ap132"
+		;;
 	*"AP136-010 reference board")
 		name="ap136-010"
 		;;
@@ -209,6 +215,9 @@ ar71xx_board_detect() {
 		;;
 	*"DIR-825 rev. B1")
 		name="dir-825-b1"
+		;;
+	*"DIR-825 rev. C1")
+		name="dir-825-c1"
 		;;
 	*EAP7660D)
 		name="eap7660d"
