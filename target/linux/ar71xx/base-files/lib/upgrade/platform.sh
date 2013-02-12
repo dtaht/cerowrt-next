@@ -145,6 +145,7 @@ platform_check_image() {
 		;;
 
 	mr600 | \
+	mr600v2 | \
 	om2p | \
 	om2p-hs | \
 	om2p-lc)
@@ -160,6 +161,7 @@ platform_check_image() {
 	tl-wa7510n | \
 	tl-wa901nd | \
 	tl-wa901nd-v2 | \
+	tl-wdr3500 | \
 	tl-wdr4300 | \
 	tl-wr703n | \
 	tl-wr741nd | \
@@ -283,6 +285,7 @@ platform_do_upgrade() {
 		platform_do_upgrade_dir825b "$ARGV"
 		;;
 	mr600 | \
+	mr600v2 | \
 	om2p | \
 	om2p-hs | \
 	om2p-lc)

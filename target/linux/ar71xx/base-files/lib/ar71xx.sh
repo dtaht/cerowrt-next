@@ -126,6 +126,9 @@ tplink_board_detect() {
 	"342000"*)
 		model="TP-Link TL-MR3420"
 		;;
+	"350000"*)
+		model="TP-Link TL-WDR3500"
+		;;
 	"360000"*)
 		model="TP-Link TL-WDR3600"
 		;;
@@ -242,6 +245,9 @@ ar71xx_board_detect() {
 		;;
 	*LS-SR71)
 		name="ls-sr71"
+		;;
+	*MR600v2)
+		name="mr600v2"
 		;;
 	*MR600)
 		name="mr600"
@@ -374,6 +380,9 @@ ar71xx_board_detect() {
 		;;
 	*"TL-WA901ND v2")
 		name="tl-wa901nd-v2"
+		;;
+	*"TL-WDR3500")
+		name="tl-wdr3500"
 		;;
 	*"TL-WDR3600/4300/4310")
 		name="tl-wdr4300"
