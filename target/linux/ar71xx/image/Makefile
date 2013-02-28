@@ -116,9 +116,9 @@ endef
 
 define CatFiles
 	if [ `stat -c%s "$(1)"` -gt $(2) ]; then \
-		echo "Warning: $(1) is too big"; \
+		echo "Warning: $(1) is too big" >&2; \
 	else if [ `stat -c%s $(3)` -gt $(4) ]; then \
-		echo "Warning: $(3) is too big"; \
+		echo "Warning: $(3) is too big" >&2; \
 	else \
 		( dd if=$(1) bs=$(2) conv=sync; dd if=$(3) ) > $(5); \
 	fi; fi
@@ -219,7 +219,7 @@ define Image/Build/DIR825B1
 			echo -n "$(4)"; \
 		) > $(call imgname,$(1),$(2))-backup-loader.bin; \
 		if [ `stat -c%s $(call sysupname,$(1),$(2))` -gt 4194304 ]; then \
-			echo "Warning: $(call sysupname,$(1),$(2)) is too big"; \
+			echo "Warning: $(call sysupname,$(1),$(2)) is too big" >&2; \
 		else \
 			( \
 				dd if=$(call sysupname,$(1),$(2)) bs=4096k conv=sync; \
@@ -247,7 +247,7 @@ define Image/Build/DLRTDEV
 			echo -n "$(4)"; \
 		) > $(call imgname,$(1),$(2))-backup-loader.bin; \
 		if [ `stat -c%s $(call sysupname,$(1),$(2))` -gt 4194304 ]; then \
-			echo "Warning: $(call sysupname,$(1),$(2)) is too big"; \
+			echo "Warning: $(call sysupname,$(1),$(2)) is too big" >&2; \
 		else \
 			( \
 				dd if=$(call sysupname,$(1),$(2)) bs=4096k conv=sync; \
@@ -355,7 +355,7 @@ define Image/Build/Cameo933x/initramfs
 endef
 
 define Image/Build/Cameo934x
-	$(call Image/Build/Cameo,$(1),$(2),$(3),$(cameo934x_mtdlayout),1310720,15007744,$(4))
+	$(call Image/Build/Cameo,$(1),$(2),$(3),$(cameo934x_mtdlayout),1310720,15007718,$(4))
 endef
 
 define Image/Build/Cameo934x/initramfs
@@ -708,7 +708,7 @@ ifdef CONFIG_PACKAGE_uboot-ar71xx-nbg460n_550n_550nh
 	$(call Sysupgrade/KRuImage,$(1),$(2),917504,2752512)
 	if [ -e "$(call sysupname,$(1),$(2))" ]; then \
 		if [ ! -f $(BIN_DIR)/$(IMG_PREFIX)-$(2)-u-boot.bin ]; then \
-			echo "Warning: $(IMG_PREFIX)-$(2)-u-boot.bin not found"; \
+			echo "Warning: $(IMG_PREFIX)-$(2)-u-boot.bin not found" >&2; \
 		else \
 			$(STAGING_DIR_HOST)/bin/mkzynfw \
 				-B $(4) \
@@ -900,6 +900,7 @@ $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLMR3420,tl-mr3420-v1,TL-MR3420,
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA701,tl-wa701n-v1,TL-WA901ND,ttyS0,115200,0x07010001,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA7510NV1,tl-wa7510n,TL-WA7510N,ttyS0,115200,0x75100001,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA801NV1,tl-wa801nd-v1,TL-WA901ND,ttyS0,115200,0x08010001,1,4M))
+$(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA830RV1,tl-wa830re-v1,TL-WA901ND,ttyS0,115200,0x08300010,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA901NV1,tl-wa901nd-v1,TL-WA901ND,ttyS0,115200,0x09010001,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA901NV2,tl-wa901nd-v2,TL-WA901ND-v2,ttyS0,115200,0x09010002,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWR740NV1,tl-wr740n-v1,TL-WR741ND,ttyS0,115200,0x07400001,1,4M))
@@ -972,6 +973,7 @@ $(eval $(call MultiProfile,OPENMESH,OM2P MR600))
 $(eval $(call MultiProfile,TEW652BRP,TEW652BRP_FW TEW652BRP_RECOVERY))
 $(eval $(call MultiProfile,TLMR3220,TLMR3220V1 TLMR3220V2))
 $(eval $(call MultiProfile,TLWA801,TLWA801NV1))
+$(eval $(call MultiProfile,TLWA830,TLWA830RV1))
 $(eval $(call MultiProfile,TLWA901,TLWA901NV1 TLWA901NV2))
 $(eval $(call MultiProfile,TLWA7510,TLWA7510NV1))
 $(eval $(call MultiProfile,TLWR740,TLWR740NV1 TLWR740NV3 TLWR740NV4))

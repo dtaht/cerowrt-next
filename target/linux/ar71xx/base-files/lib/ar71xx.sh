@@ -90,6 +90,9 @@ tplink_board_detect() {
 	"080100"*)
 		model="TP-Link TL-WA801N/ND"
 		;;
+	"083000"*)
+		model="TP-Link TL-WA830RE"
+		;;
 	"084100"*)
 		model="TP-Link TL-WR841N/ND"
 		;;
@@ -317,6 +320,9 @@ ar71xx_board_detect() {
 		;;
 	*"RouterBOARD 751G")
 		name="rb-751g"
+		;;
+	*"RouterBOARD 951G-2HnD")
+		name="rb-951g-2hnd"
 		;;
 	*"RouterBOARD 2011L")
 		name="rb-2011l"
