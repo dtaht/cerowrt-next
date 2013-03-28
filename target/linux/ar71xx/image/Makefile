@@ -284,6 +284,10 @@ define Image/Build/WZRHPG30XNH
 	fi
 endef
 
+define Image/Build/WZRHPG30XNH/initramfs
+	$(call MkuImageLzma/initramfs,$(2),$(3) $(4))
+endef
+
 define Image/Build/WHRHPG300N
 	$(call MkuImageLzma,$(2),$(3) $(4))
 	$(call Sysupgrade/KRuImage,$(1),$(2),1048576,2818048)
@@ -855,6 +859,7 @@ $(eval $(call SingleProfile,Cameo913x,$(fs_squash),TEW652BRP_RECOVERY,tew-652brp
 $(eval $(call SingleProfile,Cameo933x,$(fs_squash),TEW712BR,tew-712br,TEW-712BR,ttyATH0,115200,"HORNET-RT-TEW712BR-3"))
 
 $(eval $(call SingleProfile,Cameo934x,$(fs_64k),DIR825C1,dir-825-c1,DIR-825-C1,ttyS0,115200,"00DB120AR9344-RT-101214-00"))
+$(eval $(call SingleProfile,Cameo934x,$(fs_64k),DIR835A1,dir-835-a1,DIR-835-A1,ttyS0,115200,"00DB120AR9344-RT-101214-00"))
 
 $(eval $(call SingleProfile,CyberTAN,$(fs_64k),WRT160NL,wrt160nl,WRT160NL,ttyS0,115200,1.00.01))
 
@@ -896,7 +901,7 @@ $(eval $(call SingleProfile,Planex,$(fs_64k),MZKW300NH,mzk-w300nh,MZK-W300NH,tty
 $(eval $(call SingleProfile,TPLINKOLD,$(fs_squash),TLWR841NV15,tl-wr841nd-v1.5,TL-WR841N-v1.5,ttyS0,115200,0x08410002,2,4M))
 
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLMR3220V1,tl-mr3220-v1,TL-MR3220,ttyS0,115200,0x32200001,1,4M))
-$(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLMR3420,tl-mr3420-v1,TL-MR3420,ttyS0,115200,0x34200001,1,4M))
+$(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLMR3420V1,tl-mr3420-v1,TL-MR3420,ttyS0,115200,0x34200001,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA701,tl-wa701n-v1,TL-WA901ND,ttyS0,115200,0x07010001,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA7510NV1,tl-wa7510n,TL-WA7510N,ttyS0,115200,0x75100001,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWA801NV1,tl-wa801nd-v1,TL-WA901ND,ttyS0,115200,0x08010001,1,4M))
@@ -917,10 +922,12 @@ $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWR941NV3,tl-wr941nd-v3,TL-WR94
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWR941NV4,tl-wr941nd-v4,TL-WR741ND,ttyS0,115200,0x09410004,1,4M))
 $(eval $(call SingleProfile,TPLINK,$(fs_64kraw),TLWR1043,tl-wr1043nd-v1,TL-WR1043ND,ttyS0,115200,0x10430001,1,8M))
 
-$(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR11U,tl-mr11u-v1,TL-MR11U,ttyATH0,115200,0x00110101,1,4Mlzma))
+$(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR11UV1,tl-mr11u-v1,TL-MR11U,ttyATH0,115200,0x00110101,1,4Mlzma))
+$(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR11UV2,tl-mr11u-v2,TL-MR11U,ttyATH0,115200,0x00110102,1,4Mlzma))
 $(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR3020,tl-mr3020-v1,TL-MR3020,ttyATH0,115200,0x30200001,1,4Mlzma))
 $(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR3040,tl-mr3040-v1,TL-MR3040,ttyATH0,115200,0x30400001,1,4Mlzma))
 $(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR3220V2,tl-mr3220-v2,TL-MR3220-v2,ttyATH0,115200,0x32200002,1,4Mlzma))
+$(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLMR3420V2,tl-mr3420-v2,TL-MR3420-v2,ttyS0,115200,0x34200002,1,4Mlzma))
 $(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLWR703,tl-wr703n-v1,TL-WR703N,ttyATH0,115200,0x07030101,1,4Mlzma))
 $(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLWR740NV4,tl-wr740n-v4,TL-WR741ND-v4,ttyATH0,115200,0x07400004,1,4Mlzma))
 $(eval $(call SingleProfile,TPLINK-LZMA,$(fs_64kraw),TLWR741NV4,tl-wr741nd-v4,TL-WR741ND-v4,ttyATH0,115200,0x07410004,1,4Mlzma))
@@ -960,6 +967,7 @@ $(eval $(call SingleProfile,WZRHPG30XNH,$(fs_128k),WZRHPG300NH,wzr-hp-g300nh,WZR
 $(eval $(call SingleProfile,WZRHPG30XNH,$(fs_64k),WZRHPG300NH2,wzr-hp-g300nh2,WZR-HP-G300NH2,ttyS0,115200,WZR-HP-G300NH2))
 $(eval $(call SingleProfile,WZRHPG30XNH,$(fs_64k),WZRHPAG300H,wzr-hp-ag300h,WZR-HP-AG300H,ttyS0,115200,WZR-HP-AG300H))
 $(eval $(call SingleProfile,WZRHPG30XNH,$(fs_64k),WZRHPG450H,wzr-hp-g450h,WZR-HP-G450H,ttyS0,115200,WZR-HP-AG450H))
+$(eval $(call SingleProfile,WZRHPG30XNH,$(fs_64k),WZR600DHP,wzr-600dhp,WZR-HP-AG300H,ttyS0,115200,WZR-600DHP))
 
 $(eval $(call SingleProfile,Zcomax,$(fs_64k),ZCN1523H28,zcn-1523h-2-8,ZCN-1523H-2,ttyS0,115200,$$(zcn1523h_mtdlayout)))
 $(eval $(call SingleProfile,Zcomax,$(fs_64k),ZCN1523H516,zcn-1523h-5-16,ZCN-1523H-5,ttyS0,115200,$$(zcn1523h_mtdlayout)))
@@ -971,7 +979,9 @@ $(eval $(call MultiProfile,AP136,AP136_010 AP136_020))
 $(eval $(call MultiProfile,EWDORIN, EWDORINAP EWDORINRT))
 $(eval $(call MultiProfile,OPENMESH,OM2P MR600))
 $(eval $(call MultiProfile,TEW652BRP,TEW652BRP_FW TEW652BRP_RECOVERY))
+$(eval $(call MultiProfile,TLMR11U,TLMR11UV1 TLMR11UV2))
 $(eval $(call MultiProfile,TLMR3220,TLMR3220V1 TLMR3220V2))
+$(eval $(call MultiProfile,TLMR3420,TLMR3420V1 TLMR3420V2))
 $(eval $(call MultiProfile,TLWA801,TLWA801NV1))
 $(eval $(call MultiProfile,TLWA830,TLWA830RV1))
 $(eval $(call MultiProfile,TLWA901,TLWA901NV1 TLWA901NV2))

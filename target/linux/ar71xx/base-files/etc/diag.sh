@@ -50,7 +50,8 @@ get_status_led() {
 	dir-615-c1)
 		status_led="d-link:green:status"
 		;;
-	dir-825-b1)
+	dir-825-b1 |\
+	dir-835-a1)
 		status_led="d-link:orange:power"
 		;;
 	dir-825-c1)
@@ -117,8 +118,10 @@ get_status_led() {
 	tl-mr3220 | \
 	tl-mr3220-v2 | \
 	tl-mr3420 | \
+	tl-mr3420-v2 | \
 	tl-wa901nd | \
 	tl-wa901nd-v2 | \
+	tl-wdr3500 | \
 	tl-wr1041n-v2 | \
 	tl-wr1043nd | \
 	tl-wr741nd | \
@@ -184,9 +187,9 @@ set_state() {
 
 	case "$1" in
 	preinit)
-		insmod leds-gpio
-		insmod ledtrig-default-on
-		insmod ledtrig-timer
+		insmod leds-gpio 2> /dev/null
+		insmod ledtrig-default-on 2> /dev/null
+		insmod ledtrig-timer 2> /dev/null
 		status_led_blink_preinit
 		;;
 	failsafe)

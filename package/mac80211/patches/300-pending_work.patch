@@ -175,7 +175,17 @@
  	u32 changed = 0;
  	int res;
  	u32 hw_reconf_flags = 0;
-@@ -595,30 +594,8 @@ int ieee80211_do_open(struct wireless_de
+@@ -541,6 +540,9 @@ int ieee80211_do_open(struct wireless_de
+ 
+ 		ieee80211_adjust_monitor_flags(sdata, 1);
+ 		ieee80211_configure_filter(local);
++		mutex_lock(&local->mtx);
++		ieee80211_recalc_idle(local);
++		mutex_unlock(&local->mtx);
+ 
+ 		netif_carrier_on(dev);
+ 		break;
+@@ -595,30 +597,8 @@ int ieee80211_do_open(struct wireless_de
  
  	set_bit(SDATA_STATE_RUNNING, &sdata->state);
  
@@ -207,7 +217,17 @@
  
  	/*
  	 * set_multicast_list will be invoked by the networking core
-@@ -1022,6 +999,72 @@ static void ieee80211_if_setup(struct ne
+@@ -817,6 +797,9 @@ static void ieee80211_do_stop(struct iee
+ 
+ 		ieee80211_adjust_monitor_flags(sdata, -1);
+ 		ieee80211_configure_filter(local);
++		mutex_lock(&local->mtx);
++		ieee80211_recalc_idle(local);
++		mutex_unlock(&local->mtx);
+ 		break;
+ 	case NL80211_IFTYPE_P2P_DEVICE:
+ 		/* relies on synchronize_rcu() below */
+@@ -1022,6 +1005,72 @@ static void ieee80211_if_setup(struct ne
  	dev->destructor = free_netdev;
  }
  
@@ -280,7 +300,7 @@
  static void ieee80211_iface_work(struct work_struct *work)
  {
  	struct ieee80211_sub_if_data *sdata =
-@@ -1126,6 +1169,9 @@ static void ieee80211_iface_work(struct 
+@@ -1126,6 +1175,9 @@ static void ieee80211_iface_work(struct
  				break;
  			ieee80211_mesh_rx_queued_mgmt(sdata, skb);
  			break;
@@ -603,3 +623,341 @@
  		    BIT(NL80211_IFTYPE_WDS);
  
  	rt2x00dev->hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
+--- a/net/mac80211/rc80211_minstrel_ht.c
++++ b/net/mac80211/rc80211_minstrel_ht.c
+@@ -26,11 +26,11 @@
+ /* Number of symbols for a packet with (bps) bits per symbol */
+ #define MCS_NSYMS(bps) ((MCS_NBITS + (bps) - 1) / (bps))
+ 
+-/* Transmission time for a packet containing (syms) symbols */
++/* Transmission time (nanoseconds) for a packet containing (syms) symbols */
+ #define MCS_SYMBOL_TIME(sgi, syms)					\
+ 	(sgi ?								\
+-	  ((syms) * 18 + 4) / 5 :	/* syms * 3.6 us */		\
+-	  (syms) << 2			/* syms * 4 us */		\
++	  ((syms) * 18000 + 4000) / 5 :	/* syms * 3.6 us */		\
++	  ((syms) * 1000) << 2		/* syms * 4 us */		\
+ 	)
+ 
+ /* Transmit duration for the raw data part of an average sized packet */
+@@ -64,9 +64,9 @@
+ }
+ 
+ #define CCK_DURATION(_bitrate, _short, _len)		\
+-	(10 /* SIFS */ +				\
++	(1000 * (10 /* SIFS */ +			\
+ 	 (_short ? 72 + 24 : 144 + 48 ) +		\
+-	 (8 * (_len + 4) * 10) / (_bitrate))
++	 (8 * (_len + 4) * 10) / (_bitrate)))
+ 
+ #define CCK_ACK_DURATION(_bitrate, _short)			\
+ 	(CCK_DURATION((_bitrate > 10 ? 20 : 10), false, 60) +	\
+@@ -211,20 +211,32 @@ static void
+ minstrel_ht_calc_tp(struct minstrel_ht_sta *mi, int group, int rate)
+ {
+ 	struct minstrel_rate_stats *mr;
+-	unsigned int usecs = 0;
++	unsigned int nsecs = 0;
++	unsigned int tp;
++	unsigned int prob;
+ 
+ 	mr = &mi->groups[group].rates[rate];
++	prob = mr->probability;
+ 
+-	if (mr->probability < MINSTREL_FRAC(1, 10)) {
++	if (prob < MINSTREL_FRAC(1, 10)) {
+ 		mr->cur_tp = 0;
+ 		return;
+ 	}
+ 
++	/*
++	 * For the throughput calculation, limit the probability value to 90% to
++	 * account for collision related packet error rate fluctuation
++	 */
++	if (prob > MINSTREL_FRAC(9, 10))
++		prob = MINSTREL_FRAC(9, 10);
++
+ 	if (group != MINSTREL_CCK_GROUP)
+-		usecs = mi->overhead / MINSTREL_TRUNC(mi->avg_ampdu_len);
++		nsecs = 1000 * mi->overhead / MINSTREL_TRUNC(mi->avg_ampdu_len);
+ 
+-	usecs += minstrel_mcs_groups[group].duration[rate];
+-	mr->cur_tp = MINSTREL_TRUNC((1000000 / usecs) * mr->probability);
++	nsecs += minstrel_mcs_groups[group].duration[rate];
++	tp = 1000000 * ((mr->probability * 1000) / nsecs);
++
++	mr->cur_tp = MINSTREL_TRUNC(tp);
+ }
+ 
+ /*
+@@ -308,8 +320,8 @@ minstrel_ht_update_stats(struct minstrel
+ 		}
+ 	}
+ 
+-	/* try to sample up to half of the available rates during each interval */
+-	mi->sample_count *= 4;
++	/* try to sample all available rates during each interval */
++	mi->sample_count *= 8;
+ 
+ 	cur_prob = 0;
+ 	cur_prob_tp = 0;
+@@ -320,20 +332,13 @@ minstrel_ht_update_stats(struct minstrel
+ 		if (!mg->supported)
+ 			continue;
+ 
+-		mr = minstrel_get_ratestats(mi, mg->max_prob_rate);
+-		if (cur_prob_tp < mr->cur_tp &&
+-		    minstrel_mcs_groups[group].streams == 1) {
+-			mi->max_prob_rate = mg->max_prob_rate;
+-			cur_prob = mr->cur_prob;
+-			cur_prob_tp = mr->cur_tp;
+-		}
+-
+ 		mr = minstrel_get_ratestats(mi, mg->max_tp_rate);
+ 		if (cur_tp < mr->cur_tp) {
+ 			mi->max_tp_rate2 = mi->max_tp_rate;
+ 			cur_tp2 = cur_tp;
+ 			mi->max_tp_rate = mg->max_tp_rate;
+ 			cur_tp = mr->cur_tp;
++			mi->max_prob_streams = minstrel_mcs_groups[group].streams - 1;
+ 		}
+ 
+ 		mr = minstrel_get_ratestats(mi, mg->max_tp_rate2);
+@@ -343,6 +348,23 @@ minstrel_ht_update_stats(struct minstrel
+ 		}
+ 	}
+ 
++	if (mi->max_prob_streams < 1)
++		mi->max_prob_streams = 1;
++
++	for (group = 0; group < ARRAY_SIZE(minstrel_mcs_groups); group++) {
++		mg = &mi->groups[group];
++		if (!mg->supported)
++			continue;
++		mr = minstrel_get_ratestats(mi, mg->max_prob_rate);
++		if (cur_prob_tp < mr->cur_tp &&
++		    minstrel_mcs_groups[group].streams <= mi->max_prob_streams) {
++			mi->max_prob_rate = mg->max_prob_rate;
++			cur_prob = mr->cur_prob;
++			cur_prob_tp = mr->cur_tp;
++		}
++	}
++
++
+ 	mi->stats_update = jiffies;
+ }
+ 
+@@ -467,7 +489,7 @@ minstrel_ht_tx_status(void *priv, struct
+ 
+ 	if (!mi->sample_wait && !mi->sample_tries && mi->sample_count > 0) {
+ 		mi->sample_wait = 16 + 2 * MINSTREL_TRUNC(mi->avg_ampdu_len);
+-		mi->sample_tries = 2;
++		mi->sample_tries = 1;
+ 		mi->sample_count--;
+ 	}
+ 
+@@ -536,7 +558,7 @@ minstrel_calc_retransmit(struct minstrel
+ 	mr->retry_updated = true;
+ 
+ 	group = &minstrel_mcs_groups[index / MCS_GROUP_RATES];
+-	tx_time_data = group->duration[index % MCS_GROUP_RATES] * ampdu_len;
++	tx_time_data = group->duration[index % MCS_GROUP_RATES] * ampdu_len / 1000;
+ 
+ 	/* Contention time for first 2 tries */
+ 	ctime = (t_slot * cw) >> 1;
+@@ -616,6 +638,7 @@ minstrel_get_sample_rate(struct minstrel
+ {
+ 	struct minstrel_rate_stats *mr;
+ 	struct minstrel_mcs_group_data *mg;
++	unsigned int sample_dur, sample_group;
+ 	int sample_idx = 0;
+ 
+ 	if (mi->sample_wait > 0) {
+@@ -626,39 +649,46 @@ minstrel_get_sample_rate(struct minstrel
+ 	if (!mi->sample_tries)
+ 		return -1;
+ 
+-	mi->sample_tries--;
+ 	mg = &mi->groups[mi->sample_group];
+ 	sample_idx = sample_table[mg->column][mg->index];
+ 	mr = &mg->rates[sample_idx];
+-	sample_idx += mi->sample_group * MCS_GROUP_RATES;
++	sample_group = mi->sample_group;
++	sample_idx += sample_group * MCS_GROUP_RATES;
+ 	minstrel_next_sample_idx(mi);
+ 
+ 	/*
+ 	 * Sampling might add some overhead (RTS, no aggregation)
+ 	 * to the frame. Hence, don't use sampling for the currently
+-	 * used max TP rate.
++	 * used rates.
+ 	 */
+-	if (sample_idx == mi->max_tp_rate)
++	if (sample_idx == mi->max_tp_rate ||
++	    sample_idx == mi->max_tp_rate2 ||
++	    sample_idx == mi->max_prob_rate)
+ 		return -1;
++
+ 	/*
+-	 * When not using MRR, do not sample if the probability is already
+-	 * higher than 95% to avoid wasting airtime
++	 * Do not sample if the probability is already higher than 95%
++	 * to avoid wasting airtime.
+ 	 */
+-	if (!mp->has_mrr && (mr->probability > MINSTREL_FRAC(95, 100)))
++	if (mr->probability > MINSTREL_FRAC(95, 100))
+ 		return -1;
+ 
+ 	/*
+ 	 * Make sure that lower rates get sampled only occasionally,
+ 	 * if the link is working perfectly.
+ 	 */
+-	if (minstrel_get_duration(sample_idx) >
+-	    minstrel_get_duration(mi->max_tp_rate)) {
++	sample_dur = minstrel_get_duration(sample_idx);
++	if (sample_dur >= minstrel_get_duration(mi->max_tp_rate2) &&
++	    (mi->max_prob_streams <
++	     minstrel_mcs_groups[sample_group].streams ||
++	     sample_dur >= minstrel_get_duration(mi->max_prob_rate))) {
+ 		if (mr->sample_skipped < 20)
+ 			return -1;
+ 
+ 		if (mi->sample_slow++ > 2)
+ 			return -1;
+ 	}
++	mi->sample_tries--;
+ 
+ 	return sample_idx;
+ }
+--- a/net/mac80211/rc80211_minstrel_ht.h
++++ b/net/mac80211/rc80211_minstrel_ht.h
+@@ -85,6 +85,7 @@ struct minstrel_ht_sta {
+ 
+ 	/* best probability rate */
+ 	unsigned int max_prob_rate;
++	unsigned int max_prob_streams;
+ 
+ 	/* time of last status update */
+ 	unsigned long stats_update;
+--- a/drivers/net/wireless/ath/ath9k/ar9003_calib.c
++++ b/drivers/net/wireless/ath/ath9k/ar9003_calib.c
+@@ -1023,6 +1023,7 @@ static bool ar9003_hw_init_cal(struct at
+ 					  AR_PHY_AGC_CONTROL_FLTR_CAL   |
+ 					  AR_PHY_AGC_CONTROL_PKDET_CAL;
+ 
++	/* Use chip chainmask only for calibration */
+ 	ar9003_hw_set_chain_masks(ah, ah->caps.rx_chainmask, ah->caps.tx_chainmask);
+ 
+ 	if (rtt) {
+@@ -1150,6 +1151,9 @@ skip_tx_iqcal:
+ 		ar9003_hw_rtt_disable(ah);
+ 	}
+ 
++	/* Revert chainmask to runtime parameters */
++	ar9003_hw_set_chain_masks(ah, ah->rxchainmask, ah->txchainmask);
++
+ 	/* Initialize list pointers */
+ 	ah->cal_list = ah->cal_list_last = ah->cal_list_curr = NULL;
+ 
+--- a/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
++++ b/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
+@@ -3606,6 +3606,12 @@ static void ar9003_hw_ant_ctrl_apply(str
+ 	value = ar9003_hw_ant_ctrl_common_2_get(ah, is2ghz);
+ 	REG_RMW_FIELD(ah, AR_PHY_SWITCH_COM_2, AR_SWITCH_TABLE_COM2_ALL, value);
+ 
++	if ((AR_SREV_9462(ah)) && (ah->rxchainmask == 0x2)) {
++		value = ar9003_hw_ant_ctrl_chain_get(ah, 1, is2ghz);
++		REG_RMW_FIELD(ah, switch_chain_reg[0],
++			      AR_SWITCH_TABLE_ALL, value);
++	}
++
+ 	for (chain = 0; chain < AR9300_MAX_CHAINS; chain++) {
+ 		if ((ah->rxchainmask & BIT(chain)) ||
+ 		    (ah->txchainmask & BIT(chain))) {
+@@ -3772,6 +3778,17 @@ static void ar9003_hw_atten_apply(struct
+ 					  AR_PHY_EXT_ATTEN_CTL_2,
+ 					 };
+ 
++	if ((AR_SREV_9462(ah)) && (ah->rxchainmask == 0x2)) {
++		value = ar9003_hw_atten_chain_get(ah, 1, chan);
++		REG_RMW_FIELD(ah, ext_atten_reg[0],
++			      AR_PHY_EXT_ATTEN_CTL_XATTEN1_DB, value);
++
++		value = ar9003_hw_atten_chain_get_margin(ah, 1, chan);
++		REG_RMW_FIELD(ah, ext_atten_reg[0],
++			      AR_PHY_EXT_ATTEN_CTL_XATTEN1_MARGIN,
++			      value);
++	}
++
+ 	/* Test value. if 0 then attenuation is unused. Don't load anything. */
+ 	for (i = 0; i < 3; i++) {
+ 		if (ah->txchainmask & BIT(i)) {
+--- a/drivers/net/wireless/ath/ath9k/link.c
++++ b/drivers/net/wireless/ath/ath9k/link.c
+@@ -28,21 +28,21 @@ void ath_tx_complete_poll_work(struct wo
+ 	int i;
+ 	bool needreset = false;
+ 
+-	for (i = 0; i < ATH9K_NUM_TX_QUEUES; i++)
+-		if (ATH_TXQ_SETUP(sc, i)) {
+-			txq = &sc->tx.txq[i];
+-			ath_txq_lock(sc, txq);
+-			if (txq->axq_depth) {
+-				if (txq->axq_tx_inprogress) {
+-					needreset = true;
+-					ath_txq_unlock(sc, txq);
+-					break;
+-				} else {
+-					txq->axq_tx_inprogress = true;
+-				}
++	for (i = 0; i < IEEE80211_NUM_ACS; i++) {
++		txq = sc->tx.txq_map[i];
++
++		ath_txq_lock(sc, txq);
++		if (txq->axq_depth) {
++			if (txq->axq_tx_inprogress) {
++				needreset = true;
++				ath_txq_unlock(sc, txq);
++				break;
++			} else {
++				txq->axq_tx_inprogress = true;
+ 			}
+-			ath_txq_unlock_complete(sc, txq);
+ 		}
++		ath_txq_unlock_complete(sc, txq);
++	}
+ 
+ 	if (needreset) {
+ 		ath_dbg(ath9k_hw_common(sc->sc_ah), RESET,
+--- a/net/mac80211/sta_info.c
++++ b/net/mac80211/sta_info.c
+@@ -766,6 +766,7 @@ int __must_check __sta_info_destroy(stru
+ 	struct ieee80211_local *local;
+ 	struct ieee80211_sub_if_data *sdata;
+ 	int ret, i;
++	bool have_key = false;
+ 
+ 	might_sleep();
+ 
+@@ -793,12 +794,19 @@ int __must_check __sta_info_destroy(stru
+ 	list_del_rcu(&sta->list);
+ 
+ 	mutex_lock(&local->key_mtx);
+-	for (i = 0; i < NUM_DEFAULT_KEYS; i++)
++	for (i = 0; i < NUM_DEFAULT_KEYS; i++) {
+ 		__ieee80211_key_free(key_mtx_dereference(local, sta->gtk[i]));
+-	if (sta->ptk)
++		have_key = true;
++	}
++	if (sta->ptk) {
+ 		__ieee80211_key_free(key_mtx_dereference(local, sta->ptk));
++		have_key = true;
++	}
+ 	mutex_unlock(&local->key_mtx);
+ 
++	if (!have_key)
++		synchronize_net();
++
+ 	sta->dead = true;
+ 
+ 	local->num_sta--;
