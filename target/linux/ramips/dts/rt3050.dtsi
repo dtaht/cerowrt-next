@@ -10,7 +10,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,57600 init=/init";
+		bootargs = "console=ttyS0,57600";
 	};
 
 	cpuintc: cpuintc@0 {
@@ -155,7 +155,7 @@
 		interrupt-parent = <&cpuintc>;
 		interrupts = <6>;
 
-		ralink,eeprom = "soc_wmac.eeprom"; 
+		ralink,eeprom = "soc_wmac.eeprom";
 
 		status = "disabled";
 	};

@@ -3,8 +3,6 @@
 /include/ "rt3050.dtsi"
 
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
 	compatible = "CARAMBOLA", "ralink,rt3050-soc";
 	model = "8devices Carambola";
 
@@ -60,7 +58,7 @@
 	i2c-gpio {
 		compatible = "i2c-gpio";
 
-		gpios = <&gpio0 1 0 &gpio0 2 0>; 
+		gpios = <&gpio0 1 0 &gpio0 2 0>;
 		i2c-gpio,delay-us = <10>;
 	};
 };
