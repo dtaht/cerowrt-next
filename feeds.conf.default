@@ -1,5 +1,5 @@
-src-link cero dl/cero
-src-link packages dl/packages
-src-link luci dl/luci
-src-link batman dl/batman
-src-link bismark dl/bismark
+src-link cero ../dl/cero
+src-link packages ../dl/packages
+src-link luci ../dl/luci
+src-link batman ../dl/batman
+src-link bismark ../dl/bismark
