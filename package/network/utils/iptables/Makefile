@@ -82,6 +82,7 @@ endef
 define Package/iptables-mod-conntrack-extra
 $(call Package/iptables/Module, +kmod-ipt-conntrack-extra)
   TITLE:=Extra connection tracking extensions
+  DEPENDS+= +libxtables
 endef
 
 define Package/iptables-mod-conntrack-extra/description
