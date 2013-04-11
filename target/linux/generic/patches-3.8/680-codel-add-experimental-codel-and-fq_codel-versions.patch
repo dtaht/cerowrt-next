@@ -1457,7 +1457,7 @@ index 0000000..333beb6
 +	.walk		=	fq_codel_walk,
 +};
 +
-+static struct Qdisc_ops fq_codel_qdisc_ops __read_mostly = {
++static struct Qdisc_ops efq_codel_qdisc_ops __read_mostly = {
 +	.cl_ops		=	&fq_codel_class_ops,
 +	.id		=	"efq_codel",
 +	.priv_size	=	sizeof(struct fq_codel_sched_data),
@@ -1476,12 +1476,12 @@ index 0000000..333beb6
 +
 +static int __init fq_codel_module_init(void)
 +{
-+	return register_qdisc(&fq_codel_qdisc_ops);
++	return register_qdisc(&efq_codel_qdisc_ops);
 +}
 +
 +static void __exit fq_codel_module_exit(void)
 +{
-+	unregister_qdisc(&fq_codel_qdisc_ops);
++	unregister_qdisc(&efq_codel_qdisc_ops);
 +}
 +
 +module_init(fq_codel_module_init)
@@ -2091,7 +2091,7 @@ index 0000000..dcee875
 +	.walk		=	fq_codel_walk,
 +};
 +
-+static struct Qdisc_ops fq_codel_qdisc_ops __read_mostly = {
++static struct Qdisc_ops nfq_codel_qdisc_ops __read_mostly = {
 +	.cl_ops		=	&fq_codel_class_ops,
 +	.id		=	"nfq_codel",
 +	.priv_size	=	sizeof(struct fq_codel_sched_data),
@@ -2110,12 +2110,12 @@ index 0000000..dcee875
 +
 +static int __init fq_codel_module_init(void)
 +{
-+	return register_qdisc(&fq_codel_qdisc_ops);
++	return register_qdisc(&nfq_codel_qdisc_ops);
 +}
 +
 +static void __exit fq_codel_module_exit(void)
 +{
-+	unregister_qdisc(&fq_codel_qdisc_ops);
++	unregister_qdisc(&nfq_codel_qdisc_ops);
 +}
 +
 +module_init(fq_codel_module_init)

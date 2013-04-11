@@ -21,7 +21,7 @@ index 494cdcc..6b7413e 100644
 +	sch->limit = 1024;
  	q->flows_cnt = 1024;
 -	q->quantum = psched_mtu(qdisc_dev(sch));
-+	q->quantum = 500;
++	q->quantum = 300;
  	q->perturbation = net_random();
  	INIT_LIST_HEAD(&q->new_flows);
  	INIT_LIST_HEAD(&q->old_flows);
