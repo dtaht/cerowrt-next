@@ -1,7 +1,7 @@
-From f63a0ea6c115e7b78bce70d78aaa813615e3d434 Mon Sep 17 00:00:00 2001
+From c4429f19cc66951962c171dba90b8747f95a654e Mon Sep 17 00:00:00 2001
 From: John Crispin <blogic@openwrt.org>
 Date: Sun, 27 Jan 2013 09:17:20 +0100
-Subject: [PATCH 107/121] MIPS: ralink: adds support for RT2880 SoC family
+Subject: [PATCH V2 09/16] MIPS: ralink: adds support for RT2880 SoC family
 
 Add support code for rt2880 SOC.
 
@@ -14,8 +14,8 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
  arch/mips/ralink/Kconfig                   |    3 +
  arch/mips/ralink/Makefile                  |    1 +
  arch/mips/ralink/Platform                  |    5 +
- arch/mips/ralink/rt288x.c                  |  141 ++++++++++++++++++++++++++++
- 6 files changed, 200 insertions(+), 1 deletion(-)
+ arch/mips/ralink/rt288x.c                  |  143 ++++++++++++++++++++++++++++
+ 6 files changed, 202 insertions(+), 1 deletion(-)
  create mode 100644 arch/mips/include/asm/mach-ralink/rt288x.h
  create mode 100644 arch/mips/ralink/rt288x.c
 
@@ -26,7 +26,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
  config MIPS_L1_CACHE_SHIFT
  	int
 -	default "4" if MACH_DECSTATION || MIKROTIK_RB532 || PMC_MSP4200_EVAL
-+	default "4" if MACH_DECSTATION || MIKROTIK_RB532 || PMC_MSP4200_EVAL || SOC_RT288X 
++	default "4" if MACH_DECSTATION || MIKROTIK_RB532 || PMC_MSP4200_EVAL || SOC_RT288X
  	default "6" if MIPS_CPU_SCACHE
  	default "7" if SGI_IP22 || SGI_IP27 || SGI_IP28 || SNI_RM || CPU_CAVIUM_OCTEON
  	default "5"
@@ -120,7 +120,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
  load-$(CONFIG_SOC_RT305X)	+= 0xffffffff80000000
 --- /dev/null
 +++ b/arch/mips/ralink/rt288x.c
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,143 @@
 +/*
 + * This program is free software; you can redistribute it and/or modify it
 + * under the terms of the GNU General Public License version 2 as published
@@ -223,15 +223,17 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	}
 +
 +	ralink_clk_add("cpu", cpu_rate);
-+	ralink_clk_add("10000100.timer", cpu_rate / 2);
-+	ralink_clk_add("10000500.uart", cpu_rate / 2);
-+	ralink_clk_add("10000c00.uartlite", cpu_rate / 2);
++	ralink_clk_add("300100.timer", cpu_rate / 2);
++	ralink_clk_add("300120.watchdog", cpu_rate / 2);
++	ralink_clk_add("300500.uart", cpu_rate / 2);
++	ralink_clk_add("300c00.uartlite", cpu_rate / 2);
++	ralink_clk_add("400000.ethernet", cpu_rate / 2);
 +}
 +
 +void __init ralink_of_remap(void)
 +{
-+	rt_sysc_membase = plat_of_remap_node("ralink,rt288x-sysc");
-+	rt_memc_membase = plat_of_remap_node("ralink,rt288x-memc");
++	rt_sysc_membase = plat_of_remap_node("ralink,rt2880-sysc");
++	rt_memc_membase = plat_of_remap_node("ralink,rt2880-memc");
 +
 +	if (!rt_sysc_membase || !rt_memc_membase)
 +		panic("Failed to remap core resources");
