@@ -1,5 +1,5 @@
-cero https://github.com/dtaht/ceropackages-3.3.git 1a32053c48a7eceda4ec619aca9d4c78fb266645
-packages git://nbd.name/packages.git cf93237f8869495eb28bb4c65009fe9e22a3a92a
-luci git://nbd.name/luci.git 7e10ef0f3ed4ce21626c5afae6cd0a12f6a2a21b
+cero https://github.com/dtaht/ceropackages-3.3.git 12fc4897127ef27851834fe10f781fc58a24ae01
+packages git://nbd.name/packages.git 9ff78755198b039a986bc81af8bffcf2b2750e03
+luci git://nbd.name/luci.git e5815a832337be4e4d16d86bcae798aa4e27a9e9
 batman http://git.open-mesh.org/openwrt-feed-batman-adv.git 4f3b59ce393511d5a241b82923653e505e76b8eb
 bismark https://github.com/projectbismark/bismark-packages.git e1d4be03ce07dd0dd0b224c506cdc1ecfb0a5e28
