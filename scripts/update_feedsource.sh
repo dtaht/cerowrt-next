@@ -21,3 +21,4 @@ while read line; do
 done < feeds.source > .feeds.source.tmp && mv .feeds.source.tmp feeds.source
 
 git ls-files --modified | grep -Fxq feeds.source && git add feeds.source
+exit 0

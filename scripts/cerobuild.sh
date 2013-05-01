@@ -82,10 +82,27 @@ update_env()
     git fetch cerofiles && git merge --no-edit $CEROFILES_REVISION || error "Unable to merge cerofiles")
 }
 
+relpath()
+{
+    source="$1"
+    target="$2"
+
+    if which realpath > /dev/null 2>&1; then
+        realpath -ms --relative-to "$source" "$target"
+    else
+        if which python > /dev/null 2>&1 && ! python -V 2>&1 | grep -q '2\.[345]'; then
+            # Suitable python (v2.6+) found to be used for relpath.
+            python -c "import sys, os.path; sys.stdout.write(os.path.relpath('$target', '$source')+'\n')"
+        else
+            readlink -f "$target"
+        fi
+    fi
+}
+
 add_feed()
 {
     name=$1
-    target=$(realpath -ms --relative-to feeds/ "$SOURCE_DIR/$name")
+    target=$(relpath feeds/ "$SOURCE_DIR/$name")
     echo src-link $name $target >> .feeds.conf.cerobuild
 }
 
