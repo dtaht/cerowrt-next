@@ -63,6 +63,12 @@ endif
 ifneq ($(filter -mips%r2,$(TARGET_OPTIMIZATION)),)
   ARCH_SUFFIX:=_r2
 endif
+ifneq ($(filter -mdsp,$(TARGET_OPTIMIZATION)),)
+  ARCH_SUFFIX:=$(ARCH_SUFFIX)_dsp
+endif
+ifneq ($(filter -mdspr2,$(TARGET_OPTIMIZATION)),)
+  ARCH_SUFFIX:=$(ARCH_SUFFIX)_dspr2
+endif
 ifdef CONFIG_USE_MIPS16
    TARGET_OPTIMIZATION+= -minterlink-mips16 -mips16
 endif
@@ -196,7 +202,7 @@ HOST_LDFLAGS:=-L$(STAGING_DIR_HOST)/lib
 TARGET_CC:=$(TARGET_CROSS)gcc
 TARGET_AR:=$(TARGET_CROSS)ar
 TARGET_RANLIB:=$(TARGET_CROSS)ranlib
-TARGET_CXX:=$(if $(CONFIG_INSTALL_LIBSTDCPP),$(TARGET_CROSS)g++,no)
+TARGET_CXX:=$(TARGET_CROSS)g++
 KPATCH:=$(SCRIPT_DIR)/patch-kernel.sh
 SED:=$(STAGING_DIR_HOST)/bin/sed -i -e
 CP:=cp -fpR
