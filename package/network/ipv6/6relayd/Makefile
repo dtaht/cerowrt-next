@@ -8,14 +8,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=6relayd
-PKG_VERSION:=2013-04-24
+PKG_VERSION:=2013-05-13
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_URL:=git://github.com/sbyx/6relayd.git
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_VERSION:=67c5e6b27958b1cd54798bf2a353ba5c36843b24
+PKG_SOURCE_VERSION:=29454ff5fb3763fb61a672860de9dde62799f25b
 
 PKG_MAINTAINER:=Steven Barth <steven@midlink.org>
 
@@ -23,8 +23,8 @@ include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 define Package/6relayd
-  SECTION:=ipv6
-  CATEGORY:=IPv6
+  SECTION:=net
+  CATEGORY:=Network
   TITLE:=DHCPv6(-PD)/RA Server & Relay
   DEPENDS:=+kmod-ipv6
 endef
