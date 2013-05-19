@@ -1,20 +1,20 @@
-From 7ead45d9d8421b5b254d553d8d27e1cd7648727e Mon Sep 17 00:00:00 2001
+From a2fb6fe3706fcc0f93d3f67ed7fc674d709ff448 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Dave=20T=C3=A4ht?= <dave.taht@bufferbloat.net>
-Date: Sat, 11 May 2013 09:13:51 -0700
-Subject: [PATCH] iproute2: PIE support
+Date: Fri, 17 May 2013 15:59:52 -0700
+Subject: [RFC PATCH] iproute2: PIE qdisc with ECN support
 
 ---
- include/linux/pkt_sched.h |   20 +++++
+ include/linux/pkt_sched.h |   22 +++++
  tc/Makefile               |    1 +
- tc/q_pie.c                |  216 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 237 insertions(+)
+ tc/q_pie.c                |  233 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 256 insertions(+)
  create mode 100644 tc/q_pie.c
 
 diff --git a/include/linux/pkt_sched.h b/include/linux/pkt_sched.h
-index dbd71b0..e164053 100644
+index dbd71b0..3fb3c7e 100644
 --- a/include/linux/pkt_sched.h
 +++ b/include/linux/pkt_sched.h
-@@ -736,4 +736,24 @@ struct tc_fq_codel_xstats {
+@@ -736,4 +736,26 @@ struct tc_fq_codel_xstats {
  	};
  };
  
@@ -27,15 +27,17 @@ index dbd71b0..e164053 100644
 +        TCA_PIE_ALPHA,
 +        TCA_PIE_BETA,
 +        TCA_PIE_BYTEMODE,
++        TCA_PIE_ECN,
 +        __TCA_PIE_MAX
 +};
 +
 +#define TCA_PIE_MAX   (__TCA_PIE_MAX - 1)
 +
 +struct tc_pie_xstats {
-+        __u32   prob;  /* current probability */
-+        __u32   delay;  /* current delay in ms */
-+        __u32   avg_dq_rate;  /* current average dq_rate in bytes/jiffy */
++	__u32   prob;  /* current probability */
++	__u32   delay;  /* current delay in ms */
++	__u32   avg_dq_rate;  /* current average dq_rate in bytes/jiffy */
++	__u32	ecn_mark; /* ECN marks */
 +};
 +
  #endif
@@ -53,12 +55,11 @@ index 0092808..00ac8b0 100644
  TCMODULES += q_fq_codel.o
 diff --git a/tc/q_pie.c b/tc/q_pie.c
 new file mode 100644
-index 0000000..4d272e2
+index 0000000..1df3e8e
 --- /dev/null
 +++ b/tc/q_pie.c
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,233 @@
 +/*
-+ *
 + * Copyright (C) 2013 Cisco Systems, Inc, 2013. All rights reserved.
 + *
 + * Redistribution and use in source and binary forms, with or without
@@ -112,8 +113,10 @@ index 0000000..4d272e2
 +
 +static void explain(void)
 +{
-+	fprintf(stderr, "Usage: ... pie [ limit PACKETS ][ target TIME ms]  \n");
-+	fprintf(stderr, "              [ tupdate TIME ms][ alpha ALPHA ] [ beta BETA ] [bytemode 0|1 ] \n");
++	fprintf(stderr, "Usage: ... pie [ limit PACKETS ][ target TIME ms]");
++	fprintf(stderr, " [ tupdate TIME ms]\n"
++			"               [ alpha ALPHA ] [ beta BETA ]\n"
++			"               [ bytemode 0|1 ] [ ecn noecn ]\n");
 +}
 +
 +#define ALPHA_MAX 32
@@ -130,6 +133,7 @@ index 0000000..4d272e2
 +	unsigned int alpha = 0;
 +	unsigned int beta = 0;
 +	unsigned int bytemode = 0;
++	unsigned int ecn = -1;
 +	struct rtattr *tail;
 +
 +	while (argc > 0) {
@@ -169,6 +173,10 @@ index 0000000..4d272e2
 +				fprintf(stderr, "Illegal \"bytemode\"\n");
 +				return -1;
 +			}
++		} else if (strcmp(*argv, "ecn") == 0) {
++                        ecn = 1;
++                } else if (strcmp(*argv, "noecn") == 0) {
++                        ecn = 0;
 +		} else if (strcmp(*argv, "help") == 0) {
 +			explain();
 +			return -1;
@@ -193,7 +201,10 @@ index 0000000..4d272e2
 +	if (beta)
 +		addattr_l(n, 1024, TCA_PIE_BETA, &beta, sizeof(beta));
 +	if (bytemode)
-+		addattr_l(n, 1024, TCA_PIE_BYTEMODE, &bytemode, sizeof(bytemode));
++		addattr_l(n, 1024, TCA_PIE_BYTEMODE, &bytemode, 
++			  sizeof(bytemode));
++	if (ecn != -1)
++		addattr_l(n, 1024, TCA_PIE_ECN, &ecn, sizeof(ecn));
 +
 +	tail->rta_len = (void *) NLMSG_TAIL(n) - (void *) tail;
 +	return 0;
@@ -208,6 +219,7 @@ index 0000000..4d272e2
 +	unsigned int alpha;
 +	unsigned int beta;
 +	unsigned int bytemode;
++	unsigned int ecn;
 +
 +	if (opt == NULL)
 +		return 0;
@@ -244,6 +256,13 @@ index 0000000..4d272e2
 +		bytemode = rta_getattr_u32(tb[TCA_PIE_BYTEMODE]);
 +		fprintf(f, "bytemode  %u ", bytemode);
 +	}
++	if (tb[TCA_FQ_CODEL_ECN] &&
++	    RTA_PAYLOAD(tb[TCA_FQ_CODEL_ECN]) >= sizeof(__u32)) {
++		ecn = rta_getattr_u32(tb[TCA_FQ_CODEL_ECN]);
++		if (ecn)
++			fprintf(f, "ecn ");
++        }
++
 +
 +
 +	return 0;
@@ -262,7 +281,7 @@ index 0000000..4d272e2
 +
 +	st = RTA_DATA(xstats);
 +	/*prob is returned as a fracion of maximum integer value*/
-+	fprintf(f, "prob %f delay %u avg_dq_rate %u \n", (double)st->prob/ (double)0xffffffff, st->delay, st->avg_dq_rate);
++	fprintf(f, "prob %f delay %u avg_dq_rate %u ecn_mark %u\n", (double)st->prob/ (double)0xffffffff, st->delay, st->avg_dq_rate, st->ecn_mark);
 +	return 0;
 +
 +}
