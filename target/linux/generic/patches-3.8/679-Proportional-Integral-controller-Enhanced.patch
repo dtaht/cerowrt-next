@@ -1,6 +1,6 @@
-From a402e63f9ffcdf96add5d055ffaba0eb8da08689 Mon Sep 17 00:00:00 2001
+From ad6391ff7de86f2d3d40dbbda3d9ebc9251cf733 Mon Sep 17 00:00:00 2001
 From: Dave Taht <dave.taht@bufferbloat.net>
-Date: Sat, 11 May 2013 07:30:52 -0700
+Date: Fri, 17 May 2013 15:33:40 -0700
 Subject: [PATCH] Proportional Integral controller Enhanced
 
 This is a AQM scheduler intended to address the bufferbloat problem.
@@ -15,18 +15,18 @@ http://tools.ietf.org/html/draft-pan-tsvwg-pie-00
 All relevant code, documents and test scripts and results can be found at
 ftp://ftpeng.cisco.com/pie/.
 ---
- include/uapi/linux/pkt_sched.h |   21 ++
+ include/uapi/linux/pkt_sched.h |   23 ++
  net/sched/Kconfig              |   11 +
  net/sched/Makefile             |    1 +
- net/sched/sch_pie.c            |  536 ++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 569 insertions(+)
+ net/sched/sch_pie.c            |  523 ++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 558 insertions(+)
  create mode 100644 net/sched/sch_pie.c
 
 diff --git a/include/uapi/linux/pkt_sched.h b/include/uapi/linux/pkt_sched.h
-index 32aef0a..2f7105c 100644
+index 32aef0a..6969361 100644
 --- a/include/uapi/linux/pkt_sched.h
 +++ b/include/uapi/linux/pkt_sched.h
-@@ -735,4 +735,25 @@ struct tc_fq_codel_xstats {
+@@ -735,4 +735,27 @@ struct tc_fq_codel_xstats {
  	};
  };
  
@@ -40,6 +40,7 @@ index 32aef0a..2f7105c 100644
 +	TCA_PIE_ALPHA,
 +	TCA_PIE_BETA,
 +	TCA_PIE_BYTEMODE,
++	TCA_PIE_ECN,
 +	__TCA_PIE_MAX
 +};
 +
@@ -49,6 +50,7 @@ index 32aef0a..2f7105c 100644
 +	__u32 prob;		/* current probability */
 +	__u32 delay;		/* current delay in ms */
 +	__u32 avg_dq_rate;	/* current average dq_rate in bytes/jiffy */
++	__u32 ecn_mark;		/* packets marked */
 +};
 +
  #endif
@@ -88,12 +90,11 @@ index 978cbf0..be0cab8 100644
  
 diff --git a/net/sched/sch_pie.c b/net/sched/sch_pie.c
 new file mode 100644
-index 0000000..009bd19
+index 0000000..de1c519e
 --- /dev/null
 +++ b/net/sched/sch_pie.c
-@@ -0,0 +1,536 @@
+@@ -0,0 +1,523 @@
 +/*
-+ *
 + *  Copyright (C) 2013 Cisco Systems, Inc, 2013. All rights reserved.
 + *
 + * Redistribution and use in source and binary forms, with or without
@@ -138,22 +139,24 @@ index 0000000..009bd19
 +#include <linux/errno.h>
 +#include <linux/skbuff.h>
 +#include <net/pkt_sched.h>
++#include <net/inet_ecn.h>
 +
-+#define PIE_DEFAULT_QUEUE_LIMIT 200		/* in packets */
++#define PIE_DEFAULT_QUEUE_LIMIT 1000		/* in packets */
 +#define QUEUE_THRESHOLD		(10*1500)	/* 10 Ethernet packets worth */
-+#define DQCOUNT_INVALID 	-1
++#define DQCOUNT_INVALID	-1
 +#define THRESHOLD_PKT_SIZE	1500
 +
 +struct pie_params {
-+	u32 target;		/* user specified target delay, we convert 
++	u32 target;		/* user specified target delay, we convert
 +				   from ms and store as jiffies */
 +	u32 tupdate;		/* frequency with which the timer fires, in ms
 +				   from user, stored in jiffies */
 +	u32 limit;		/* number of packets that can be enqueued */
 +	u32 alpha;		/* alpha and beta are between -4 and 4 */
 +	u32 beta;		/* and are used for shift relative to 1 */
-+	u32 small;		/* if non-zero, we use packet size to calc 
-+				   prob in early_drop*/
++	bool small;		/* if non-zero, we use packet size to calc
++				   prob in early_drop */
++	bool ecn;		/* use ECN */
 +};
 +
 +struct pie_vars {
@@ -164,9 +167,8 @@ index 0000000..009bd19
 +	u32 dq_count;		/* measured in bytes */
 +	u64 dq_timestamp;	/* 64 bit timestamp */
 +	u32 avg_dq_rate;	/* bytes per jiffy or bytes per target ms? */
-+	u32 qlen_old;		/* bytes, the current qlen in bytes is 
-+				 * maintained in sch->qstats.backlog
-+				 */
++	u32 qlen_old;		/* bytes, the current qlen in bytes is
++				   maintained in sch->qstats.backlog */
 +};
 +
 +struct pie_stats {
@@ -174,30 +176,25 @@ index 0000000..009bd19
 +	u32 dropped;		/* packets dropped due to pie_action */
 +	u32 overlimit;		/* dropped due to lack of space in queue */
 +	u32 maxq;		/* maximum queue size */
++	u32 ecn_mark;
 +};
 +
 +static void pie_params_init(struct pie_params *params)
 +{
-+	memset(params, 0, sizeof(*params));
-+	params->small = 1;
++	params->small = true;
++	params->ecn = false;
 +	params->alpha = 2;
 +	params->beta = 20;
 +	params->tupdate = msecs_to_jiffies(30);
-+	params->limit = PIE_DEFAULT_QUEUE_LIMIT;
 +	params->target = msecs_to_jiffies(20);
++	params->limit = PIE_DEFAULT_QUEUE_LIMIT;
 +}
 +
 +static void pie_vars_init(struct pie_vars *vars)
 +{
 +	memset(vars, 0, sizeof(*vars));
 +	vars->dq_count = DQCOUNT_INVALID;
-+	vars->avg_dq_rate = 0;
 +	vars->burst_time = msecs_to_jiffies(100);
-+}
-+
-+static void pie_stats_init(struct pie_stats *stats)
-+{
-+	memset(stats, 0, sizeof(*stats));
 +}
 +
 +struct pie_sched_data {
@@ -207,26 +204,25 @@ index 0000000..009bd19
 +	struct timer_list adapt_timer;
 +};
 +
-+static inline bool drop_early(struct Qdisc *sch, u32 packet_size)
++static bool drop_early(struct Qdisc *sch, u32 packet_size)
 +{
 +	struct pie_sched_data *q = qdisc_priv(sch);
-+	u32 rnd = net_random();
 +	u32 local_prob;
 +
 +	/* If there is still burst allowance left or delay is much below
-+	 * target (and not due to heavy dropping), skip random early drop 
++	 * target (and not due to heavy dropping), skip random early drop
 +	 */
 +	if (q->vars.burst_time > 0)
 +		return false;
 +
-+	/* If current delay is less than half of target, and 
++	/* If current delay is less than half of target, and
 +	 * if drop prob is low already, disable early_drop
 +	 */
 +	if ((q->vars.qdelay < q->params.target / 2)
 +	    && (q->vars.prob < UINT_MAX / 5))
 +		return false;
 +
-+	/* If we have fewer than 2 packets, disable drop_early, similar to 
++	/* If we have fewer than 2 packets, disable drop_early, similar to
 +	 * min_th in RED
 +	 */
 +
@@ -238,10 +234,10 @@ index 0000000..009bd19
 +	 */
 +	if (q->params.small && (packet_size < THRESHOLD_PKT_SIZE))
 +		local_prob = (q->vars.prob/THRESHOLD_PKT_SIZE) * packet_size;
-+	else 
++	else
 +		local_prob = q->vars.prob;
-+	 
-+	if (rnd < local_prob)
++
++	if (net_random() < local_prob)
 +		return true;
 +
 +	return false;
@@ -249,34 +245,41 @@ index 0000000..009bd19
 +
 +static int pie_qdisc_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 +{
++	bool drop;
 +	struct pie_sched_data *q = qdisc_priv(sch);
-+
 +	if (unlikely(qdisc_qlen(sch) >= sch->limit))
 +		goto out;
 +
-+	if (!drop_early(sch,skb->len)) {
-+		/* we can enqueue the packet */
++	drop = drop_early(sch, skb->len);
++	if (!drop) {
 +		q->stats.packets_in++;
-+
 +		if (qdisc_qlen(sch) > q->stats.maxq)
 +			q->stats.maxq = qdisc_qlen(sch);
++		return qdisc_enqueue_tail(skb, sch);
 +
++	} else if(q->params.ecn && INET_ECN_set_ce(skb)) {
++		q->stats.packets_in++;
++		if (qdisc_qlen(sch) > q->stats.maxq)
++			q->stats.maxq = qdisc_qlen(sch);
++		q->stats.ecn_mark++;
 +		return qdisc_enqueue_tail(skb, sch);
 +	}
 +
 +out:
 +	q->stats.overlimit++;
-+	return qdisc_drop(skb, sch);
++	qdisc_drop(skb, sch);
++	return NET_XMIT_CN;
 +
 +}
 +
 +static const struct nla_policy pie_policy[TCA_PIE_MAX + 1] = {
-+	[TCA_PIE_TARGET] = {.type = NLA_U32},
-+	[TCA_PIE_LIMIT] = {.type = NLA_U32},
-+	[TCA_PIE_TUPDATE] = {.type = NLA_U32},
-+	[TCA_PIE_ALPHA] = {.type = NLA_U32},
-+	[TCA_PIE_BETA] = {.type = NLA_U32},
-+	[TCA_PIE_BYTEMODE] = {.type = NLA_U32},   
++	[TCA_PIE_TARGET]   = { .type = NLA_U32 },
++	[TCA_PIE_LIMIT]    = { .type = NLA_U32 },
++	[TCA_PIE_TUPDATE]  = { .type = NLA_U32 },
++	[TCA_PIE_ALPHA]    = { .type = NLA_U32 },
++	[TCA_PIE_BETA]     = { .type = NLA_U32 },
++	[TCA_PIE_BYTEMODE] = { .type = NLA_U32 },
++	[TCA_PIE_ECN]	   = { .type = NLA_U32 },
 +};
 +
 +static int pie_change(struct Qdisc *sch, struct nlattr *opt)
@@ -295,30 +298,28 @@ index 0000000..009bd19
 +
 +	sch_tree_lock(sch);
 +
-+	if (tb[TCA_PIE_TARGET]) {
-+		q->params.target = 
++	if (tb[TCA_PIE_TARGET])
++		q->params.target =
 +			msecs_to_jiffies(nla_get_u32(tb[TCA_PIE_TARGET]));
-+	}
-+	if (tb[TCA_PIE_TUPDATE]) {
++
++	if (tb[TCA_PIE_TUPDATE])
 +		q->params.tupdate =
 +			msecs_to_jiffies(nla_get_u32(tb[TCA_PIE_TUPDATE]));
-+	}
 +
-+	if (tb[TCA_PIE_LIMIT]) {
++	if (tb[TCA_PIE_LIMIT])
 +		q->params.limit = sch->limit = nla_get_u32(tb[TCA_PIE_LIMIT]);
-+	}
 +
-+	if (tb[TCA_PIE_ALPHA]) {
++	if (tb[TCA_PIE_ALPHA])
 +		q->params.alpha = nla_get_u32(tb[TCA_PIE_ALPHA]);
-+	}
 +
-+	if (tb[TCA_PIE_BETA]) {
++	if (tb[TCA_PIE_BETA])
 +		q->params.beta = nla_get_u32(tb[TCA_PIE_BETA]);
-+	}
 +
-+	if (tb[TCA_PIE_BYTEMODE]) {
++	if (tb[TCA_PIE_BYTEMODE])
 +		q->params.small = nla_get_u32(tb[TCA_PIE_BYTEMODE]);
-+	}
++
++	if (tb[TCA_PIE_ECN])
++		q->params.ecn = nla_get_u32(tb[TCA_PIE_ECN]);
 +
 +	/* Drop excess packets when new limit is lower */
 +	qlen = sch->q.qlen;
@@ -340,7 +341,7 @@ index 0000000..009bd19
 +	struct pie_sched_data *q = qdisc_priv(sch);
 +	int qlen = sch->qstats.backlog;	/* current queue size in bytes */
 +
-+	/* If current queue is about 10 packets or more and dq_count is 
++	/* If current queue is about 10 packets or more and dq_count is
 +	 * less than 0, we have enough packets
 +	 * to calculate the drain rate. Save current time as dq_timestamp
 +	 */
@@ -350,13 +351,12 @@ index 0000000..009bd19
 +		q->vars.dq_count = 0;
 +	}
 +
-+	/*
-+	 * Calculate the average drain rate from this value.  If queue length
++	/* Calculate the average drain rate from this value.  If queue length
 +	 * has receded to a small value viz., <=10 packets,reset the dq_count
 +	 * to -1 as we don't have enough packets to calculate the drain rate
 +	 * anymore The following if block is entered only when we have a
 +	 * substantial queue built up (10 packets or more) and we calculate the
-+	 * drain rate for 10 packets here.  dq_count is in bytes time 
++	 * drain rate for 10 packets here.  dq_count is in bytes time
 +	 * difference in ms, hence rate is in bytes/ms.
 +	 */
 +
@@ -421,13 +421,11 @@ index 0000000..009bd19
 +	else
 +		qdelay = 0;
 +
-+	/*
-+	 * Add ranges for alpha and beta, more aggressive for high dropping 
-+	 * mode and gentle steps for light dropping mode 
++	/* Add ranges for alpha and beta, more aggressive for high dropping
++	 * mode and gentle steps for light dropping mode
 +	 * In light dropping mode, take gentle steps; in medium dropping mode,
 +	 * take medium steps; in high dropping mode, take big steps.
 +	 */
-+
 +	if (q->vars.prob < UINT_MAX / 100) {
 +		alpha = (q->params.alpha * (UINT_MAX / HZ)) >> 7;
 +		beta = (q->params.beta * (UINT_MAX / HZ)) >> 7;
@@ -452,32 +450,32 @@ index 0000000..009bd19
 +		delta = UINT_MAX / 200;
 +
 +	/* Non-linear drop */
-+	if ( qdelay > ((250*HZ)/1000) ) 
-+		delta = (2*UINT_MAX)/100 ;
++	if (qdelay > (250 * HZ) / 1000)
++		delta = (2 * UINT_MAX) / 100;
 +
 +	q->vars.prob += delta;
 +
 +	if (delta > 0) {
 +		/* prevent overflow */
-+		if (q->vars.prob < oldprob) q->vars.prob = UINT_MAX;
++		if (q->vars.prob < oldprob)
++			q->vars.prob = UINT_MAX;
 +	} else {
 +		/* prevent underflow */
-+		if (q->vars.prob > oldprob) q->vars.prob = 0;
++		if (q->vars.prob > oldprob)
++			q->vars.prob = 0;
 +	}
 +
 +	/* for non-linear drop in probability */
-+	if ( qdelay == 0 && qdelay_old == 0 ) 
++	if (qdelay == 0 && qdelay_old == 0)
 +		q->vars.prob = (q->vars.prob * 98)/100;
 +
 +	q->vars.qdelay = qdelay;
 +	q->vars.qlen_old = qlen;
 +
-+	if ((q->vars.qdelay < q->params.target / 2) && 
-+	    (q->vars.qdelay_old < q->params.target / 2) && 
++	if ((q->vars.qdelay < q->params.target / 2) &&
++	    (q->vars.qdelay_old < q->params.target / 2) &&
 +	     q->vars.prob == 0)
 +		pie_vars_init(&q->vars);
-+
-+	return;
 +}
 +
 +static inline void pie_timer(unsigned long arg)
@@ -489,9 +487,6 @@ index 0000000..009bd19
 +
 +	/* reset the timer to fire after 'tupdate' ms, tupdate is in jiffies */
 +	mod_timer(&q->adapt_timer, jiffies + q->params.tupdate);
-+
-+	return;
-+
 +}
 +
 +static int pie_init(struct Qdisc *sch, struct nlattr *opt)
@@ -500,7 +495,7 @@ index 0000000..009bd19
 +
 +	pie_params_init(&q->params);
 +	pie_vars_init(&q->vars);
-+	pie_stats_init(&q->stats);
++
 +	sch->limit = q->params.limit;
 +	setup_timer(&q->adapt_timer, pie_timer, (unsigned long)sch);
 +	add_timer(&q->adapt_timer);
@@ -533,15 +528,13 @@ index 0000000..009bd19
 +	/* convert target and tupdate from jiffies to ms */
 +	if (nla_put_u32(skb, TCA_PIE_TARGET,
 +			jiffies_to_msecs(q->params.target)) ||
-+	    nla_put_u32(skb, TCA_PIE_LIMIT,
-+			sch->limit) ||
++	    nla_put_u32(skb, TCA_PIE_LIMIT, sch->limit) ||
 +	    nla_put_u32(skb, TCA_PIE_TUPDATE,
 +			jiffies_to_msecs(q->params.tupdate)) ||
-+	    nla_put_u32(skb, TCA_PIE_ALPHA,
-+			q->params.alpha) ||
-+	    nla_put_u32(skb, TCA_PIE_BETA,
-+	    		q->params.beta) || 
-+	    nla_put_u32(skb, TCA_PIE_BYTEMODE, q->params.small))
++	    nla_put_u32(skb, TCA_PIE_ALPHA, q->params.alpha) ||
++	    nla_put_u32(skb, TCA_PIE_BETA, q->params.beta) ||
++	    nla_put_u32(skb, TCA_PIE_BYTEMODE, q->params.small) ||
++	    nla_put_u32(skb, TCA_PIE_ECN, q->params.ecn))
 +		goto nla_put_failure;
 +
 +	return nla_nest_end(skb, opts);
@@ -559,6 +552,7 @@ index 0000000..009bd19
 +		.prob = q->vars.prob,
 +		.delay = (q->vars.qdelay * 1000) / HZ,
 +		.avg_dq_rate = q->vars.avg_dq_rate,
++		.ecn_mark = q->stats.ecn_mark,
 +	};
 +
 +	return gnet_stats_copy_app(d, &st, sizeof(st));
@@ -582,8 +576,6 @@ index 0000000..009bd19
 +	struct pie_sched_data *q = qdisc_priv(sch);
 +	qdisc_reset_queue(sch);
 +	pie_vars_init(&q->vars);
-+
-+	return;
 +}
 +
 +static void pie_destroy(struct Qdisc *sch)
@@ -610,21 +602,18 @@ index 0000000..009bd19
 +
 +static int __init pie_module_init(void)
 +{
-+	printk("PIE scheduler for controlling delay: Module registered\n");
 +	return register_qdisc(&pie_qdisc_ops);
 +}
 +
 +static void __exit pie_module_exit(void)
 +{
-+	printk("PIE scheduler for controlling delay: Module unregistered\n");
 +	unregister_qdisc(&pie_qdisc_ops);
 +}
 +
 +module_init(pie_module_init);
 +module_exit(pie_module_exit);
 +
-+MODULE_DESCRIPTION
-+    ("PIE (Proportional Integral controller Enhanced) scheduler");
++MODULE_DESCRIPTION("PIE (Proportional Integral controller Enhanced) scheduler");
 +MODULE_AUTHOR("Vijay Subramanian");
 +MODULE_AUTHOR("Mythili Prabhu");
 +MODULE_LICENSE("GPL");
