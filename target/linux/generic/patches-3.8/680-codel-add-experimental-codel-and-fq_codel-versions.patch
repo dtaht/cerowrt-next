@@ -1493,7 +1493,7 @@ new file mode 100644
 index 0000000..dcee875
 --- /dev/null
 +++ b/net/sched/sch_nfq_codel.c
-@@ -0,0 +1,627 @@
+@@ -0,0 +1,632 @@
 +/*
 + * Fair Queue CoDel discipline
 + *
@@ -1686,9 +1686,14 @@ index 0000000..dcee875
 +	sch->qstats.backlog += qdisc_pkt_len(skb);
 +
 +	if (list_empty(&flow->flowchain)) {
++		if(qdisc_pkt_len(skb) > q->quantum) { 
++		list_add_tail(&flow->flowchain, &q->old_flows);
++		flow->deficit = q->quantum;
++		} else {
 +		list_add_tail(&flow->flowchain, &q->new_flows);
 +		q->new_flow_count++;
 +		flow->deficit = q->quantum;
++		}
 +        }
 +	if (++sch->q.qlen < sch->limit)
 +		return NET_XMIT_SUCCESS;
