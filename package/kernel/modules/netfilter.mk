@@ -164,6 +164,23 @@ endef
 
 $(eval $(call KernelPackage,ipt-nat))
 
+define KernelPackage/ip6t-nat
+  TITLE:=Basic IPv6 NAT targets
+  KCONFIG:=$(KCONFIG_NF_NAT_IPV6)
+  FILES:=$(foreach mod,$(IP6T_NAT-m),$(LINUX_DIR)/net/$(mod).ko)
+  AUTOLOAD:=$(call AutoLoad,42,$(notdir $(IP6T_NAT-m)))
+  $(call AddDepends/ip6t)
+endef
+
+define KernelPackage/ip6t-nat/description
+ Netfilter (IPv6) kernel modules for basic NAT targets
+ Includes:
+ - MASQUERADE
+ - NPT
+endef
+
+$(eval $(call KernelPackage,ip6t-nat))
+
 
 define KernelPackage/ipt-nat-extra
   TITLE:=Extra NAT targets
