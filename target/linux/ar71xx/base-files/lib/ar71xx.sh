@@ -132,7 +132,10 @@ tplink_board_detect() {
 	"254300"*)
 		model="TP-Link TL-WR2543N/ND"
 		;;
-	"110101"*)
+	"001001"*)
+		model="TP-Link TL-MR10U"
+		;;
+	"001101"*)
 		model="TP-Link TL-MR11U"
 		;;
 	"302000"*)
@@ -218,6 +221,9 @@ ar71xx_board_detect() {
 		;;
 	*AP83)
 		name="ap83"
+		;;
+	*"Archer C7")
+		name="archer-c7"
 		;;
 	*"Atheros AP96")
 		name="ap96"
@@ -347,6 +353,9 @@ ar71xx_board_detect() {
 		;;
 	*"RouterBOARD 2011L")
 		name="rb-2011l"
+		;;
+	*"RouterBOARD 2011UAS")
+		name="rb-2011uas"
 		;;
 	*"RouterBOARD 2011UAS-2HnD")
 		name="rb-2011uas-2hnd"
