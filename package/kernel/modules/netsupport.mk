@@ -383,7 +383,7 @@ define KernelPackage/ipv6
 	CONFIG_IPV6_PRIVACY=y \
 	CONFIG_IPV6_MULTIPLE_TABLES=y \
 	CONFIG_IPV6_MROUTE=y \
-	CONFIG_IPV6_PIMSM_V2=n \
+	CONFIG_IPV6_PIMSM_V2=y \
 	CONFIG_IPV6_SUBTREES=y
   FILES:=$(LINUX_DIR)/net/ipv6/ipv6.ko
   AUTOLOAD:=$(call AutoLoad,20,ipv6)
@@ -474,6 +474,23 @@ define KernelPackage/tun/description
 endef
 
 $(eval $(call KernelPackage,tun))
+
+
+define KernelPackage/veth
+  SUBMENU:=$(NETWORK_SUPPORT_MENU)
+  TITLE:=Virtual ethernet pair device
+  KCONFIG:=CONFIG_VETH
+  FILES:=$(LINUX_DIR)/drivers/net/veth.ko
+  AUTOLOAD:=$(call AutoLoad,30,veth)
+endef
+
+define KernelPackage/veth/description
+ This device is a local ethernet tunnel. Devices are created in pairs.
+ When one end receives the packet it appears on its pair and vice
+ versa.
+endef
+
+$(eval $(call KernelPackage,veth))
 
 
 define KernelPackage/ppp
@@ -701,6 +718,7 @@ define KernelPackage/sched
 	CONFIG_NET_SCH_TBF \
 	CONFIG_NET_SCH_SFQ \
 	CONFIG_NET_SCH_QFQ \
+	CONFIG_NET_SCH_PIE \
 	CONFIG_NET_SCH_TEQL \
 	CONFIG_NET_CLS_BASIC \
 	CONFIG_NET_ACT_POLICE \

@@ -109,6 +109,7 @@ platform_check_image() {
 	dir-615-c1 | \
 	dir-615-e4 | \
 	dir-825-c1 | \
+	dir-835-a1 | \
 	ew-dorin | \
 	ew-dorin-router | \
 	mzk-w04nu | \
@@ -121,6 +122,7 @@ platform_check_image() {
 	nanostation-m | \
 	rocket-m | \
 	rw2458n | \
+	wndap360 | \
 	wzr-hp-g300nh2 | \
 	wzr-hp-g300nh | \
 	wzr-hp-g450h | \
@@ -152,18 +154,22 @@ platform_check_image() {
 		platform_check_image_openmesh "$magic_long" "$1" && return 0
 		return 1
 		;;
+
+	archer-c7 | \
 	tl-mr11u | \
 	tl-mr3020 | \
 	tl-mr3040 | \
 	tl-mr3220 | \
 	tl-mr3220-v2 | \
 	tl-mr3420 | \
+	tl-mr3420-v2 | \
 	tl-wa7510n | \
 	tl-wa901nd | \
 	tl-wa901nd-v2 | \
 	tl-wdr3500 | \
 	tl-wdr4300 | \
 	tl-wr703n | \
+	tl-wr720n-v3 | \
 	tl-wr741nd | \
 	tl-wr741nd-v4 | \
 	tl-wr841n-v1 | \

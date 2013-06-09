@@ -28,6 +28,8 @@ setup_interface () {
 		proto_add_ipv6_prefix "$prefix"
 	done
 
+	[ -n "$USERPREFIX" ] && proto_add_ipv6_prefix "$USERPREFIX"
+
 	# Merge addresses
 	for entry in $RA_ADDRESSES; do
 		local duplicate=0
@@ -67,6 +69,20 @@ setup_interface () {
 
 	proto_send_update "$INTERFACE"
 
+	if [ -n "$AFTR_IP " -a -n "$IFACE_DSLITE" ]; then
+uci -q batch <<-EOF >/dev/null
+set network.$IFACE_DSLITE.proto=dslite
+set network.$IFACE_DSLITE.auto=0
+set network.$IFACE_DSLITE.peeraddr=$AFTR_IP
+set network.$IFACE_DSLITE.tunlink=$INTERFACE
+commit network
+EOF
+
+		ifdown "$IFACE_DSLITE"
+		/etc/init.d/network reload
+		ifup "$IFACE_DSLITE"
+	fi
+
 	# TODO: $SNTP_IP $SIP_IP $SNTP_FQDN $SIP_DOMAIN
 }
 
@@ -76,7 +92,11 @@ teardown_interface() {
 }
 
 case "$2" in
-	informed|bound|updated|rebound|ra-updated)
+	bound)
+		teardown_interface "$1"
+		setup_interface "$1"
+	;;
+	informed|updated|rebound|ra-updated)
 		setup_interface "$1"
 	;;
 	started|stopped|unbound)

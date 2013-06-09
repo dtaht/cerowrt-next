@@ -10,7 +10,7 @@ FS_MENU:=Filesystems
 define KernelPackage/fs-autofs4
   SUBMENU:=$(FS_MENU)
   TITLE:=AUTOFS4 filesystem support
-  KCONFIG:=CONFIG_AUTOFS4_FS 
+  KCONFIG:=CONFIG_AUTOFS4_FS
   FILES:=$(LINUX_DIR)/fs/autofs4/autofs4.ko
   AUTOLOAD:=$(call AutoLoad,30,autofs4)
 endef
@@ -171,6 +171,7 @@ $(eval $(call KernelPackage,fs-hfsplus))
 define KernelPackage/fs-isofs
   SUBMENU:=$(FS_MENU)
   TITLE:=ISO9660 filesystem support
+  DEPENDS:=+kmod-lib-zlib
   KCONFIG:=CONFIG_ISO9660_FS CONFIG_JOLIET=y CONFIG_ZISOFS=n
   FILES:=$(LINUX_DIR)/fs/isofs/isofs.ko
   AUTOLOAD:=$(call AutoLoad,30,isofs)

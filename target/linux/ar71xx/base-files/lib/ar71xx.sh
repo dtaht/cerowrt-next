@@ -62,18 +62,31 @@ tplink_get_hwid() {
 	dd if=$part bs=4 count=1 skip=16 2>/dev/null | hexdump -v -n 4 -e '1/1 "%02x"'
 }
 
+tplink_get_mid() {
+	local part
+
+	part=$(find_mtd_part firmware)
+	[ -z "$part" ] && return 1
+
+	dd if=$part bs=4 count=1 skip=17 2>/dev/null | hexdump -v -n 4 -e '1/1 "%02x"'
+}
+
 tplink_board_detect() {
 	local model="$1"
 	local hwid
 	local hwver
 
 	hwid=$(tplink_get_hwid)
+	mid=$(tplink_get_mid)
 	hwver=${hwid:6:2}
 	hwver="v${hwver#0}"
 
 	case "$hwid" in
 	"070300"*)
 		model="TP-Link TL-WR703N"
+		;;
+	"072001"*)
+		model="TP-Link TL-WR720N"
 		;;
 	"070100"*)
 		model="TP-Link TL-WA701N/ND"
@@ -90,6 +103,9 @@ tplink_board_detect() {
 	"080100"*)
 		model="TP-Link TL-WA801N/ND"
 		;;
+	"083000"*)
+		model="TP-Link TL-WA830RE"
+		;;
 	"084100"*)
 		model="TP-Link TL-WR841N/ND"
 		;;
@@ -100,7 +116,12 @@ tplink_board_detect() {
 		model="TP-Link TL-WA901N/ND"
 		;;
 	"094100"*)
-		model="TP-Link TL-WR941N/ND"
+		if [ "$hwid" == "09410002" -a "$mid" == "00420001" ]; then
+			model="Rosewill RNX-N360RT"
+			hwver=""
+		else
+			model="TP-Link TL-WR941N/ND"
+		fi
 		;;
 	"104100"*)
 		model="TP-Link TL-WR1041N/ND"
@@ -111,7 +132,10 @@ tplink_board_detect() {
 	"254300"*)
 		model="TP-Link TL-WR2543N/ND"
 		;;
-	"110101"*)
+	"001001"*)
+		model="TP-Link TL-MR10U"
+		;;
+	"001101"*)
 		model="TP-Link TL-MR11U"
 		;;
 	"302000"*)
@@ -198,6 +222,9 @@ ar71xx_board_detect() {
 	*AP83)
 		name="ap83"
 		;;
+	*"Archer C7")
+		name="archer-c7"
+		;;
 	*"Atheros AP96")
 		name="ap96"
 		;;
@@ -221,6 +248,9 @@ ar71xx_board_detect() {
 		;;
 	*"DIR-825 rev. C1")
 		name="dir-825-c1"
+		;;
+	*"DIR-835 rev. A1")
+		name="dir-835-a1"
 		;;
 	*EAP7660D)
 		name="eap7660d"
@@ -318,8 +348,14 @@ ar71xx_board_detect() {
 	*"RouterBOARD 751G")
 		name="rb-751g"
 		;;
+	*"RouterBOARD 951G-2HnD")
+		name="rb-951g-2hnd"
+		;;
 	*"RouterBOARD 2011L")
 		name="rb-2011l"
+		;;
+	*"RouterBOARD 2011UAS")
+		name="rb-2011uas"
 		;;
 	*"RouterBOARD 2011UAS-2HnD")
 		name="rb-2011uas-2hnd"
@@ -372,6 +408,9 @@ ar71xx_board_detect() {
 	*TL-MR3420)
 		name="tl-mr3420"
 		;;
+	*"TL-MR3420 v2")
+		name="tl-mr3420-v2"
+		;;
 	*TL-WA7510N)
 		name="tl-wa7510n"
 		;;
@@ -408,6 +447,9 @@ ar71xx_board_detect() {
 	*"TL-WR703N v1")
 		name="tl-wr703n"
 		;;
+	*"TL-WR720N v3")
+		name="tl-wr720n-v3"
+		;;
 	*"TL-MR11U")
 		name="tl-mr11u"
 		;;
@@ -435,11 +477,17 @@ ar71xx_board_detect() {
 	*WPE72)
 		name="wpe72"
 		;;
+	*WNDAP360)
+		name="wndap360"
+		;;
 	*"WNDR3700/WNDR3800/WNDRMAC")
 		wndr3700_board_detect "$machine"
 		;;
 	*"WNDR4300")
 		name="wndr4300"
+		;;
+	*"WNR2000 V3")
+		name="wnr2000-v3"
 		;;
 	*WNR2000)
 		name="wnr2000"
@@ -450,7 +498,7 @@ ar71xx_board_detect() {
 	*WRT400N)
 		name="wrt400n"
 		;;
-	*WZR-HP-AG300H)
+	*"WZR-HP-AG300H/WZR-600DHP")
 		name="wzr-hp-ag300h"
 		;;
 	*WZR-HP-G300NH)

@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include <glob.h>
 
 #include "iwinfo.h"
 
@@ -511,6 +512,16 @@ static char * print_mbssid_supp(const struct iwinfo_ops *iw, const char *ifname)
 	return buf;
 }
 
+static char * print_phyname(const struct iwinfo_ops *iw, const char *ifname)
+{
+	static char buf[32];
+
+	if (!iw->phyname(ifname, buf))
+		return buf;
+
+	return "?";
+}
+
 
 static void print_info(const struct iwinfo_ops *iw, const char *ifname)
 {
@@ -544,8 +555,9 @@ static void print_info(const struct iwinfo_ops *iw, const char *ifname)
 		print_txpower_offset(iw, ifname));
 	printf("          Frequency offset: %s\n",
 		print_frequency_offset(iw, ifname));
-	printf("          Supports VAPs: %s\n",
-		print_mbssid_supp(iw, ifname));
+	printf("          Supports VAPs: %s  PHY name: %s\n",
+		print_mbssid_supp(iw, ifname),
+		print_phyname(iw, ifname));
 }
 
 
@@ -735,9 +747,11 @@ static void print_countrylist(const struct iwinfo_ops *iw, const char *ifname)
 int main(int argc, char **argv)
 {
 	int i;
+	char *p;
 	const struct iwinfo_ops *iw;
+	glob_t globbuf;
 
-	if (argc < 3)
+	if (argc > 1 && argc < 3)
 	{
 		fprintf(stderr,
 			"Usage:\n"
@@ -750,6 +764,30 @@ int main(int argc, char **argv)
 		);
 
 		return 1;
+	}
+
+	if (argc == 1)
+	{
+		glob("/sys/class/net/*", 0, NULL, &globbuf);
+
+		for (i = 0; i < globbuf.gl_pathc; i++)
+		{
+			p = strrchr(globbuf.gl_pathv[i], '/');
+
+			if (!p)
+				continue;
+
+			iw = iwinfo_backend(++p);
+
+			if (!iw)
+				continue;
+
+			print_info(iw, p);
+			printf("\n");
+		}
+
+		globfree(&globbuf);
+		return 0;
 	}
 
 	iw = iwinfo_backend(argv[1]);

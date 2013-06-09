@@ -110,14 +110,32 @@ endef
 $(eval $(call KernelPackage,usb-ohci,1))
 
 
+define KernelPackage/usb2-fsl
+  TITLE:=Support for Freescale USB2 controllers
+  DEPENDS:=TARGET_mpc85xx
+  KCONFIG:=\
+	CONFIG_USB_FSL_MPH_DR_OF \
+  	CONFIG_USB_EHCI_FSL=y
+  FILES:=$(LINUX_DIR)/drivers/usb/host/fsl-mph-dr-of.ko
+  AUTOLOAD:=$(call AutoLoad,39,fsl-mph-dr-of,1)
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb2-fsl/description
+ Kernel support for Freescale USB2 (EHCI) controllers
+endef
+
+$(eval $(call KernelPackage,usb2-fsl))
+
+
 define KernelPackage/usb2
   TITLE:=Support for USB2 controllers
-  DEPENDS:=+TARGET_brcm47xx:kmod-usb-brcm47xx
+  DEPENDS:=+TARGET_brcm47xx:kmod-usb-brcm47xx +TARGET_mpc85xx:kmod-usb2-fsl
   KCONFIG:=CONFIG_USB_EHCI_HCD \
 	CONFIG_USB_EHCI_ATH79=y \
 	CONFIG_USB_EHCI_BCM63XX=y \
 	CONFIG_USB_OCTEON_EHCI=y \
-	CONFIG_USB_EHCI_FSL=n \
+	CONFIG_USB_EHCI_HCD_ORION=y \
 	CONFIG_USB_EHCI_HCD_PLATFORM=y
 ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,3.8.0)),1)
   FILES:= \
@@ -140,7 +158,7 @@ $(eval $(call KernelPackage,usb2))
 
 define KernelPackage/usb2-pci
   TITLE:=Support for PCI USB2 controllers
-  DEPENDS:=@PCI_SUPPORT @LINUX_3_8 +kmod-usb2
+  DEPENDS:=@PCI_SUPPORT @(LINUX_3_8||LINUX_3_9) +kmod-usb2
   KCONFIG:=CONFIG_USB_EHCI_PCI
   FILES:=$(LINUX_DIR)/drivers/usb/host/ehci-pci.ko
   AUTOLOAD:=$(call AutoLoad,42,ehci-pci,1)
@@ -825,6 +843,22 @@ endef
 
 $(eval $(call KernelPackage,usb-net-rndis))
 
+define KernelPackage/usb-net-cdc-mbim
+  SUBMENU:=$(USB_MENU)
+  TITLE:=Kernel module for MBIM Devices
+  KCONFIG:=CONFIG_USB_NET_CDC_MBIM
+  FILES:= \
+   $(LINUX_DIR)/drivers/$(USBNET_DIR)/cdc_mbim.ko
+  AUTOLOAD:=$(call AutoLoad,62,cdc_mbim)
+  $(call AddDepends/usb-net,+kmod-usb-wdm,+kmod-usb-net-cdc-ncm)
+endef
+
+define KernelPackage/usb-net-cdc-mbim/description
+ Kernel module for Option USB High Speed Mobile Devices
+endef
+
+$(eval $(call KernelPackage,usb-net-cdc-mbim))
+
 define KernelPackage/usb-net-cdc-ncm
   TITLE:=Support for CDC NCM connections
   KCONFIG:=CONFIG_USB_NET_CDC_NCM
@@ -886,6 +920,23 @@ define KernelPackage/usb-hid/description
 endef
 
 $(eval $(call KernelPackage,usb-hid))
+
+define KernelPackage/usb-hid-generic
+  TITLE:=Support for USB Human Input Devices
+  KCONFIG:=CONFIG_HID_SUPPORT=y CONFIG_USB_HID CONFIG_USB_HIDDEV=y CONFIG_HID_GENERIC
+  FILES:=$(LINUX_DIR)/drivers/hid/hid-generic.ko
+  AUTOLOAD:=$(call AutoLoad,70,hid-generic)
+  $(call AddDepends/usb)
+  $(call AddDepends/hid)
+  $(call AddDepends/input,+kmod-input-evdev)
+endef
+
+
+define KernelPackage/usb-hid-generic/description
+ Kernel support for generic USB HID devices such as upses
+endef
+
+$(eval $(call KernelPackage,usb-hid-generic))
 
 
 define KernelPackage/usb-yealink

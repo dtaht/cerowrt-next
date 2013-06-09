@@ -164,6 +164,23 @@ endef
 
 $(eval $(call KernelPackage,ipt-nat))
 
+define KernelPackage/ip6t-nat
+  TITLE:=Basic IPv6 NAT targets
+  KCONFIG:=$(KCONFIG_NF_NAT_IPV6)
+  FILES:=$(foreach mod,$(IP6T_NAT-m),$(LINUX_DIR)/net/$(mod).ko)
+  AUTOLOAD:=$(call AutoLoad,42,$(notdir $(IP6T_NAT-m)))
+  $(call AddDepends/ip6t)
+endef
+
+define KernelPackage/ip6t-nat/description
+ Netfilter (IPv6) kernel modules for basic NAT targets
+ Includes:
+ - MASQUERADE
+ - NPT
+endef
+
+$(eval $(call KernelPackage,ip6t-nat))
+
 
 define KernelPackage/ipt-nat-extra
   TITLE:=Extra NAT targets
@@ -402,7 +419,7 @@ endef
 
 $(eval $(call KernelPackage,ip6tables))
 
-
+ARP_MODULES = arp_tables arpt_mangle arptable_filter
 define KernelPackage/arptables
   SUBMENU:=$(NF_MENU)
   TITLE:=ARP firewalling modules
@@ -410,7 +427,7 @@ define KernelPackage/arptables
   KCONFIG:=CONFIG_IP_NF_ARPTABLES \
     CONFIG_IP_NF_ARPFILTER \
     CONFIG_IP_NF_ARP_MANGLE
-  AUTOLOAD:=$(call AutoLoad,49,$(notdir $(patsubst %.ko,%,$(wildcard $(LINUX_DIR)/net/ipv4/netfilter/arp*.ko))))
+  AUTOLOAD:=$(call AutoLoad,49,$(ARP_MODULES))
 endef
 
 define KernelPackage/arptables/description
@@ -553,7 +570,7 @@ define KernelPackage/nf-conntrack-netlink
 endef
 
 define KernelPackage/nf-conntrack-netlink/description
- Kernel modules support for a netlink-based connection tracking 
+ Kernel modules support for a netlink-based connection tracking
  userspace interface
 endef
 

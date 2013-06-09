@@ -8,12 +8,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dnsmasq
-PKG_VERSION:=2.66test13
+PKG_VERSION:=2.67test7
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=http://thekelleys.org.uk/dnsmasq/test-releases
-PKG_MD5SUM:=1403c2b6dcfabadfd647fefc18ed26ec
+PKG_MD5SUM:=289b50f047ce6a7c87f611e5ef4ed5aa
 
 PKG_LICENSE:=GPLv2
 PKG_LICENSE_FILES:=COPYING
@@ -63,7 +63,7 @@ Package/dnsmasq-dhcpv6/conffiles = $(Package/dnsmasq/conffiles)
 
 TARGET_CFLAGS += \
 	-ffunction-sections -fdata-sections \
-	$(if $(CONFIG_IPV6),,-DNO_IPV6)
+	$(if $(CONFIG_IPV6),,-DNO_IPV6) -DNO_IPSET
 
 ifeq ($(BUILD_VARIANT),nodhcpv6)
   TARGET_CFLAGS += -DNO_DHCP6

@@ -132,6 +132,22 @@ endef
 $(eval $(call KernelPackage,gpio-dev))
 
 
+define KernelPackage/gpio-mcp23s08
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Microchip MCP23xxx I/O expander
+  DEPENDS:=@GPIO_SUPPORT
+  KCONFIG:=CONFIG_GPIO_MCP23S08
+  FILES:=$(LINUX_DIR)/drivers/gpio/gpio-mcp23s08.ko
+  AUTOLOAD:=$(call AutoLoad,40,gpio-mcp23s08)
+endef
+
+define KernelPackage/gpio-mcp23s08/description
+  Kernel module for Microchip MCP23xxx SPI/I2C I/O expander
+endef
+
+$(eval $(call KernelPackage,gpio-mcp23s08))
+
+
 define KernelPackage/gpio-nxp-74hc164
   SUBMENU:=$(OTHER_MENU)
   TITLE:=NXP 74HC164 GPIO expander support
@@ -145,6 +161,21 @@ define KernelPackage/gpio-nxp-74hc164/description
 endef
 
 $(eval $(call KernelPackage,gpio-nxp-74hc164))
+
+define KernelPackage/gpio-pcf857x
+  SUBMENU:=$(OTHER_MENU)
+  DEPENDS:=@GPIO_SUPPORT +kmod-i2c-core
+  TITLE:=PCX857x, PCA967x and MAX732X I2C GPIO expanders
+  KCONFIG:=CONFIG_GPIO_PCF857X
+  FILES:=$(LINUX_DIR)/drivers/gpio/gpio-pcf857x.ko
+  AUTOLOAD:=$(call AutoLoad,55,gpio-pcf857x)
+endef
+
+define KernelPackage/gpio-pcf857x/description
+  Kernel module for PCF857x, PCA{85,96}7x, and MAX732[89] I2C GPIO expanders
+endef
+
+$(eval $(call KernelPackage,gpio-pcf857x))
 
 define KernelPackage/lp
   SUBMENU:=$(OTHER_MENU)
@@ -520,7 +551,7 @@ define KernelPackage/serial-8250
 	CONFIG_SERIAL_8250_SHARE_IRQ=y \
 	CONFIG_SERIAL_8250_DETECT_IRQ=n \
 	CONFIG_SERIAL_8250_RSA=n
-  FILES:=$(LINUX_DIR)/drivers/tty/serial/8250/8250$(if $(call kernel_patchver_ge,3.7),_core).ko
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/8250/8250$(if $(call kernel_patchver_ge,3.7),$(if $(call kernel_patchver_le,3.9),_core)).ko
 endef
 
 define KernelPackage/serial-8250/description
@@ -542,7 +573,7 @@ define KernelPackage/regmap
 	$(LINUX_DIR)/drivers/base/regmap/regmap-core.ko \
 	$(LINUX_DIR)/drivers/base/regmap/regmap-i2c.ko \
 	$(LINUX_DIR)/drivers/base/regmap/regmap-spi.ko
-  AUTOLOAD:=$(call AutoLoad,10,regmap-core regmap-i2c regmap-spi)
+  AUTOLOAD:=$(call AutoLoad,21,regmap-core regmap-i2c regmap-spi)
 endef
 
 define KernelPackage/regmap/description
@@ -636,3 +667,20 @@ define KernelPacakge/ptp/description
 endef
 
 $(eval $(call KernelPackage,ptp))
+
+
+define KernelPackage/ptp-gianfar
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Freescale Gianfar PTP support
+  DEPENDS:=@TARGET_mpc85xx +kmod-gianfar +kmod-ptp
+  KCONFIG:=CONFIG_PTP_1588_CLOCK_GIANFAR
+  FILES:=$(LINUX_DIR)/drivers/net/ethernet/freescale/gianfar_ptp.ko
+  AUTOLOAD:=$(call AutoLoad,51,gianfar_ptp)
+endef
+
+define KernelPacakge/ptp-gianfar/description
+  Kernel module for IEEE 1588 support for Freescale
+  Gianfar Ethernet drivers.
+endef
+
+$(eval $(call KernelPackage,ptp-gianfar))

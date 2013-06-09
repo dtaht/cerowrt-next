@@ -1,32 +1,8 @@
 #!/bin/sh
-#
-# Copyright (C) 2009 OpenWrt.org
-#
-#
+# Copyright (C) 2009-2013 OpenWrt.org
 
+. /lib/functions/leds.sh
 . /lib/ar71xx.sh
-
-status_led=""
-
-led_set_attr() {
-	[ -f "/sys/class/leds/$1/$2" ] && echo "$3" > "/sys/class/leds/$1/$2"
-}
-
-status_led_set_timer() {
-	led_set_attr $status_led "trigger" "timer"
-	led_set_attr $status_led "delay_on" "$1"
-	led_set_attr $status_led "delay_off" "$2"
-}
-
-status_led_on() {
-	led_set_attr $status_led "trigger" "none"
-	led_set_attr $status_led "brightness" 255
-}
-
-status_led_off() {
-	led_set_attr $status_led "trigger" "none"
-	led_set_attr $status_led "brightness" 0
-}
 
 get_status_led() {
 	case $(ar71xx_board_name) in
@@ -74,7 +50,8 @@ get_status_led() {
 	dir-615-c1)
 		status_led="d-link:green:status"
 		;;
-	dir-825-b1)
+	dir-825-b1 |\
+	dir-835-a1)
 		status_led="d-link:orange:power"
 		;;
 	dir-825-c1)
@@ -141,8 +118,10 @@ get_status_led() {
 	tl-mr3220 | \
 	tl-mr3220-v2 | \
 	tl-mr3420 | \
+	tl-mr3420-v2 | \
 	tl-wa901nd | \
 	tl-wa901nd-v2 | \
+	tl-wdr3500 | \
 	tl-wr1041n-v2 | \
 	tl-wr1043nd | \
 	tl-wr741nd | \
@@ -153,8 +132,10 @@ get_status_led() {
 	tl-wr941nd)
 		status_led="tp-link:green:system"
 		;;
+	archer-c7 | \
 	tl-wdr4300 | \
-	tl-wr703n)
+	tl-wr703n | \
+	tl-wr720n-v3)
 		status_led="tp-link:blue:system"
 		;;
 	tl-wr2543n)
@@ -179,6 +160,9 @@ get_status_led() {
 	wzr-hp-g300nh2)
 		status_led="buffalo:red:diag"
 		;;
+	wndap360)
+		status_led="wndap360:green:power"
+		;;
 	wndr3700)
 		status_led="wndr3700:green:power"
 		;;
@@ -200,7 +184,7 @@ get_status_led() {
 	zcn-1523h-2 | zcn-1523h-5)
 		status_led="zcn-1523h:amber:init"
 		;;
-	esac;
+	esac
 }
 
 set_state() {
@@ -208,13 +192,13 @@ set_state() {
 
 	case "$1" in
 	preinit)
-		insmod leds-gpio
-		insmod ledtrig-default-on
-		insmod ledtrig-timer
-		status_led_set_timer 200 200
+		insmod leds-gpio 2> /dev/null
+		insmod ledtrig-default-on 2> /dev/null
+		insmod ledtrig-timer 2> /dev/null
+		status_led_blink_preinit
 		;;
 	failsafe)
-		status_led_set_timer 50 50
+		status_led_blink_failsafe
 		;;
 	done)
 		status_led_on

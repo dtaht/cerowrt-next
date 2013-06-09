@@ -36,7 +36,7 @@ $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_IP_NF_FILTER, $(P_V4)iptabl
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_IP_NF_MANGLE, $(P_V4)iptable_mangle),))
 
 # userland only
-$(eval $(if $(NF_KMOD),,$(call nf_add,IPT_CORE,CONFIG_IP_NF_IPTABLES, xt_standard ipt_icmp xt_tcp xt_udp xt_comment)))
+$(eval $(if $(NF_KMOD),,$(call nf_add,IPT_CORE,CONFIG_IP_NF_IPTABLES, xt_standard ipt_icmp xt_tcp xt_udp xt_comment xt_set xt_SET)))
 
 $(eval $(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_MATCH_LIMIT, $(P_XT)xt_limit))
 $(eval $(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_MATCH_MAC, $(P_XT)xt_mac))
@@ -47,6 +47,14 @@ $(eval $(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_TARGET_LOG, $(P_XT)xt_LOG, ge 
 $(eval $(call nf_add,IPT_CORE,CONFIG_IP_NF_TARGET_LOG, $(P_V4)ipt_LOG, lt 3.4.0))
 $(eval $(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_TARGET_TCPMSS, $(P_XT)xt_TCPMSS))
 $(eval $(call nf_add,IPT_CORE,CONFIG_IP_NF_TARGET_REJECT, $(P_V4)ipt_REJECT))
+$(eval $(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_MATCH_TIME, $(P_XT)xt_time))
+$(eval $(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_MATCH_MARK, $(P_XT)xt_mark))
+
+# kernel has xt_MARK.ko merged into xt_mark.ko, userspace is still separate
+# kernel: xt_mark.ko
+$(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_TARGET_MARK, $(P_XT)xt_mark)))
+# userland: xt_MARK.so
+$(eval $(if $(NF_KMOD),,$(call nf_add,IPT_CORE,CONFIG_NETFILTER_XT_TARGET_MARK, $(P_XT)xt_MARK)))
 
 
 # conntrack
@@ -97,20 +105,12 @@ $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_DSCP, $(P_XT)xt_dscp))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_DSCP, $(P_XT)xt_DSCP))
 $(eval $(call nf_add,IPT_HASHLIMIT,CONFIG_NETFILTER_XT_MATCH_HASHLIMIT, $(P_XT)xt_hashlimit)) 
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_LENGTH, $(P_XT)xt_length))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_MARK, $(P_XT)xt_mark))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_STATISTIC, $(P_XT)xt_statistic))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_TCPMSS, $(P_XT)xt_tcpmss))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_TIME, $(P_XT)xt_time))
 
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_CLASSIFY, $(P_XT)xt_CLASSIFY))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_DSCP, $(P_V4)ipt_dscp))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_ECN, $(P_V4)ipt_ECN))
-
-# kernel has xt_MARK.ko merged into xt_mark.ko, userspace is still separate
-# kernel: xt_mark.ko
-$(eval $(if $(NF_KMOD),$(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_MARK, $(P_XT)xt_mark)))
-# userland: xt_MARK.so
-$(eval $(if $(NF_KMOD),,$(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_MARK, $(P_XT)xt_MARK)))
 
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_ECN, $(P_XT)xt_ecn))
 
@@ -144,6 +144,8 @@ $(eval $(if $(NF_KMOD),$(call nf_add,IPT_IPV6,CONFIG_IP6_NF_MANGLE, $(P_V6)ip6ta
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_IPV6,CONFIG_IP6_NF_QUEUE, $(P_V6)ip6_queue),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_IPV6,CONFIG_IP6_NF_RAW, $(P_V6)ip6table_raw),))
 
+$(eval $(if $(NF_KMOD),,$(call nf_add,IPT_IPV6,CONFIG_IP6_NF_IPTABLES, ip6t_icmp6)))
+
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_MATCH_AH, $(P_V6)ip6t_ah))
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_MATCH_EUI64, $(P_V6)ip6t_eui64))
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_MATCH_FRAG, $(P_V6)ip6t_frag))
@@ -155,6 +157,15 @@ $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_MATCH_RT, $(P_V6)ip6t_rt))
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_LOG, $(P_V6)ip6t_LOG))
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_REJECT, $(P_V6)ip6t_REJECT))
 
+# nat6 kernel 
+
+$(eval $(call nf_add,IPT_IPV6,CONFIG_NF_NAT_IPV6, $(P_V6)nf_nat_ipv6))
+$(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_NPT, $(P_V6)ip6t_NPT))
+$(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_MASQUERADE, $(P_V6)ip6t_MASQUERADE))
+
+# nat6 userspace
+$(eval $(if $(NF_KMOD),,$(call nf_add,NF_NAT_IPV6,CONFIG_NF_NAT_IPV6, ip6t_SNTP ip6t_DNPT)))
+
 # nat
 
 # kernel only
@@ -165,14 +176,14 @@ $(eval $(if $(NF_KMOD),$(call nf_add,IPT_NAT,CONFIG_NF_NAT, $(P_V4)nf_nat $(P_V4
 $(eval $(if $(NF_KMOD),,$(call nf_add,IPT_NAT,CONFIG_NF_NAT, ipt_SNAT ipt_DNAT)))
 
 $(eval $(call nf_add,IPT_NAT,CONFIG_IP_NF_TARGET_MASQUERADE, $(P_V4)ipt_MASQUERADE))
+$(eval $(call nf_add,IPT_NAT,CONFIG_IP_NF_TARGET_REDIRECT, $(P_XT)xt_REDIRECT, ge 3.7.0))
+$(eval $(call nf_add,IPT_NAT,CONFIG_IP_NF_TARGET_REDIRECT, $(P_V4)ipt_REDIRECT, lt 3.7.0))
 
 
 # nat-extra
 
 $(eval $(call nf_add,IPT_NAT_EXTRA,CONFIG_IP_NF_TARGET_NETMAP, $(P_XT)xt_NETMAP, ge 3.7.0))
 $(eval $(call nf_add,IPT_NAT_EXTRA,CONFIG_IP_NF_TARGET_NETMAP, $(P_V4)ipt_NETMAP, lt 3.7.0))
-$(eval $(call nf_add,IPT_NAT_EXTRA,CONFIG_IP_NF_TARGET_REDIRECT, $(P_XT)xt_REDIRECT, ge 3.7.0))
-$(eval $(call nf_add,IPT_NAT_EXTRA,CONFIG_IP_NF_TARGET_REDIRECT, $(P_V4)ipt_REDIRECT, lt 3.7.0))
 
 
 # nathelper
@@ -283,7 +294,7 @@ IPT_BUILTIN += $(IPT_FILTER-y)
 IPT_BUILTIN += $(IPT_IPOPT-y)
 IPT_BUILTIN += $(IPT_IPRANGE-y)
 IPT_BUILTIN += $(IPT_IPSEC-y)
-IPT_BUILTIN += $(IPT_IPV6-y)
+IPT_BUILTIN += $(IPT_IPV6-y) $(IPT_IPV6-m)
 IPT_BUILTIN += $(IPT_NAT-y)
 IPT_BUILTIN += $(IPT_NAT_EXTRA-y)
 IPT_BUILTIN += $(IPT_NATHELPER-y)

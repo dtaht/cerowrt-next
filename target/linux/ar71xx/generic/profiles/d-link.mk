@@ -27,6 +27,17 @@ endef
 
 $(eval $(call Profile,DIR601A1))
 
+define Profile/DIR601B1
+	NAME:=D-Link DIR-601 rev. B1
+	PACKAGES:=
+endef
+
+define Profile/DIR601B1/Description
+	Package set optimized for the D-Link DIR-601 rev. B1.
+endef
+
+$(eval $(call Profile,DIR601B1))
+
 define Profile/DIR615C1
 	NAME:=D-Link DIR-615 rev. C1
 	PACKAGES:=
@@ -64,7 +75,7 @@ $(eval $(call Profile,DIR825B1))
 
 define Profile/DIR825C1
 	NAME:=D-Link DIR-825 rev. C1
-	PACKAGES:=kmod-usb-core mod-usb2 kmod-ledtrig-usbdev
+	PACKAGES:=kmod-usb-core kmod-usb2 kmod-ledtrig-usbdev
 endef
 
 define Profile/DIR825C1/Description
@@ -72,3 +83,14 @@ define Profile/DIR825C1/Description
 endef
 
 $(eval $(call Profile,DIR825C1))
+
+define Profile/DIR835A1
+	NAME:=D-Link DIR-835 rev. A1
+	PACKAGES:=kmod-usb-core kmod-usb2
+endef
+
+define Profile/DIR835A1/Description
+	Package set optimized for the D-Link DIR-835 rev. A1.
+endef
+
+$(eval $(call Profile,DIR835A1))

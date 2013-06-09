@@ -162,8 +162,8 @@ static void __init om2p_lc_setup(void)
 					ARRAY_SIZE(om2p_gpio_keys),
 					om2p_gpio_keys);
 
-	ath79_init_mac(ath79_eth1_data.mac_addr, mac1, 0);
-	ath79_init_mac(ath79_eth0_data.mac_addr, mac2, 0);
+	ath79_init_mac(ath79_eth0_data.mac_addr, mac1, 0);
+	ath79_init_mac(ath79_eth1_data.mac_addr, mac2, 0);
 
 	ath79_register_mdio(0, 0x0);
 
@@ -187,7 +187,7 @@ static void __init om2p_hs_setup(void)
 
 	/* enable reset button */
 	ath79_gpio_output_select(OM2P_GPIO_BTN_RESET, AR934X_GPIO_OUT_GPIO);
-	ath79_gpio_function_enable(AR933X_GPIO_FUNC_JTAG_DISABLE);
+	ath79_gpio_function_enable(AR934X_GPIO_FUNC_JTAG_DISABLE);
 
 	om2p_leds_gpio[4].gpio = OM2P_GPIO_LED_WAN;
 	om2p_leds_gpio[5].gpio = OM2P_GPIO_LED_LAN;

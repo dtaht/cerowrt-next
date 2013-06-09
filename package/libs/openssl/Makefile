@@ -8,15 +8,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openssl
-PKG_VERSION:=1.0.1d
+PKG_VERSION:=1.0.1e
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://www.openssl.org/source/ \
-	ftp://ftp.funet.fi/pub/crypt/cryptography/libs/openssl/source/ \
-	ftp://ftp.webmonster.de/pub/openssl/source/ \
+	ftp://ftp.funet.fi/pub/crypt/mirrors/ftp.openssl.org/source \
 	ftp://ftp.sunet.se/pub/security/tools/net/openssl/source/
-PKG_MD5SUM:=b92fc634f0f1f31a67ed4175adc5ba33
+PKG_MD5SUM:=66bf6f10f060d561929de96f9dfe5b8c
 
 PKG_LICENSE:=SSLEAY OPENSSL
 PKG_LICENSE_FILES:=LICENSE
@@ -76,7 +75,7 @@ endef
 
 OPENSSL_NO_CIPHERS:= no-idea no-md2 no-mdc2 no-rc5 no-sha0 no-smime \
 	no-rmd160 no-aes192 no-ripemd no-camellia no-ans1 no-krb5
-OPENSSL_OPTIONS:= shared no-ec no-err no-hw no-threads zlib-dynamic no-sse2
+OPENSSL_OPTIONS:= shared no-err no-hw no-threads zlib-dynamic no-sse2
 
 ifdef CONFIG_OPENSSL_ENGINE_CRYPTO
   OPENSSL_OPTIONS += -DHAVE_CRYPTODEV
@@ -112,7 +111,7 @@ define Build/Configure
 	)
 endef
 
-TARGET_CFLAGS += $(FPIC)
+TARGET_CFLAGS := $(filter-out -mips16 -minterlink-mips16,$(TARGET_CFLAGS)) $(FPIC)
 
 define Build/Compile
 	# XXX: OpenSSL "make depend" will look for installed headers before its own,
@@ -125,6 +124,7 @@ define Build/Compile
 		depend
 	$(_SINGLE)$(MAKE) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
+		ASFLAGS="$(TARGET_ASFLAGS) -c" \
 		AR="$(TARGET_CROSS)ar r" \
 		RANLIB="$(TARGET_CROSS)ranlib" \
 		OPENWRT_OPTIMIZATION_FLAGS="$(TARGET_CFLAGS)" \
@@ -132,6 +132,7 @@ define Build/Compile
 		all
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
+		ASFLAGS="$(TARGET_ASFLAGS) -c" \
 		AR="$(TARGET_CROSS)ar r" \
 		RANLIB="$(TARGET_CROSS)ranlib" \
 		OPENWRT_OPTIMIZATION_FLAGS="$(TARGET_CFLAGS)" \

@@ -10,10 +10,10 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=mac80211
 
-PKG_VERSION:=2013-01-07
-PKG_RELEASE:=1
+PKG_VERSION:=2013-04-16
+PKG_RELEASE:=2
 PKG_SOURCE_URL:=http://mirror2.openwrt.org/sources
-PKG_MD5SUM:=bc4924720ebd8f3fcd9588e3c0f4db1c
+PKG_MD5SUM:=ec4cd40f0a8838aeea2ccff3ec5deb1a
 
 PKG_SOURCE:=compat-wireless-$(PKG_VERSION).tar.bz2
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/compat-wireless-$(PKG_VERSION)
@@ -85,6 +85,7 @@ define KernelPackage/mac80211/config
 	config PACKAGE_MAC80211_DEBUGFS
 		bool "Export mac80211 internals in DebugFS"
 		select KERNEL_DEBUG_FS
+		select KERNEL_RELAY if PACKAGE_kmod-ath9k-common
 		default y
 		help
 		  Select this to see extensive information about
@@ -102,12 +103,12 @@ Generic IEEE 802.11 Networking Stack (mac80211)
 endef
 
 PKG_LINUX_FIRMWARE_NAME:=linux-firmware
-PKG_LINUX_FIRMWARE_VERSION:=0d6729f2b0bc6254d3628eb831bc80a36b5a17db
+PKG_LINUX_FIRMWARE_VERSION:=6942dba419d2ebf8c15514972e89734fd7a8cebc
 PKG_LINUX_FIRMWARE_SOURCE:=$(PKG_LINUX_FIRMWARE_NAME)-$(PKG_LINUX_FIRMWARE_VERSION).tar.bz2
 PKG_LINUX_FIRMWARE_PROTO:=git
 PKG_LINUX_FIRMWARE_SOURCE_URL:=git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
 PKG_LINUX_FIRMWARE_SUBDIR:=$(PKG_LINUX_FIRMWARE_NAME)-$(PKG_LINUX_FIRMWARE_VERSION)
-PKG_LINUX_FIRMWARE_MIRROR_MD5SUM:=5086f5da17c6043f09391c6c16dc0177
+PKG_LINUX_FIRMWARE_MIRROR_MD5SUM:=a5f8c27af9e43f0ad24d7f821c5a781e
 
 define Download/linux-firmware
   FILE:=$(PKG_LINUX_FIRMWARE_SOURCE)
@@ -211,7 +212,7 @@ $(call KernelPackage/rt2x00/Default)
   DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-mac80211 +kmod-lib-crc-itu-t
   TITLE+= (LIB)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2x00lib.ko
-  AUTOLOAD:=$(call AutoLoad,25,rt2x00lib)
+  AUTOLOAD:=$(call AutoLoad,24,rt2x00lib)
   MENU:=1
 endef
 
@@ -220,7 +221,7 @@ define KernelPackage/rt2x00-lib/config
 
 	config PACKAGE_RT2X00_LIB_DEBUGFS
 		bool "Enable rt2x00 debugfs support"
-		depends PACKAGE_MAC80211_DEBUGFS
+		depends on PACKAGE_MAC80211_DEBUGFS
 		help
 		  Enable creation of debugfs files for the rt2x00 drivers.
 		  These debugfs files support both reading and writing of the
@@ -238,8 +239,10 @@ define KernelPackage/rt2x00-pci
 $(call KernelPackage/rt2x00/Default)
   DEPENDS+= @(PCI_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib +kmod-eeprom-93cx6
   TITLE+= (PCI)
-  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2x00pci.ko
-  AUTOLOAD:=$(call AutoLoad,26,rt2x00pci)
+  FILES:= \
+	$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2x00pci.ko \
+	$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2x00mmio.ko
+  AUTOLOAD:=$(call AutoLoad,25,rt2x00mmio rt2x00pci)
 endef
 
 define KernelPackage/rt2x00-usb
@@ -636,7 +639,7 @@ endef
 
 define KernelPackage/iwlagn
   $(call KernelPackage/mac80211/Default)
-  DEPENDS:= +kmod-mac80211 @PCI_SUPPORT
+  DEPENDS:= +kmod-mac80211 @PCI_SUPPORT +@DRIVER_11N_SUPPORT
   TITLE:=Intel AGN Wireless support
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/iwlwifi/iwlwifi.ko
   AUTOLOAD:=$(call AutoLoad,60,iwlwifi)
@@ -762,7 +765,7 @@ endef
 
 define KernelPackage/iwl4965
   $(call KernelPackage/mac80211/Default)
-  DEPENDS:= +kmod-mac80211 +kmod-iwl-legacy
+  DEPENDS:= +kmod-mac80211 +kmod-iwl-legacy +@DRIVER_11N_SUPPORT
   TITLE:=Intel iwl4965 Wireless support
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/iwlegacy/iwl4965.ko
   AUTOLOAD:=$(call AutoLoad,61,iwl4965)
@@ -777,7 +780,7 @@ define KernelPackage/mwl8k
   $(call KernelPackage/mac80211/Default)
   TITLE:=Driver for Marvell TOPDOG 802.11 Wireless cards
   URL:=http://wireless.kernel.org/en/users/Drivers/mwl8k
-  DEPENDS+= @PCI_SUPPORT +kmod-mac80211
+  DEPENDS+= @PCI_SUPPORT +kmod-mac80211 +@DRIVER_11N_SUPPORT
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/mwl8k.ko
   AUTOLOAD:=$(call AutoLoad,27,mwl8k)
 endef
@@ -1117,6 +1120,13 @@ PKG_BRCMSMAC_FW_SOURCE:=$(PKG_BRCMSMAC_FW_NAME)-$(PKG_BRCMSMAC_FW_VERSION).tar.b
 PKG_BRCMSMAC_FW_SOURCE_URL:=http://www.lwfinger.com/b43-firmware/
 PKG_BRCMSMAC_FW_MD5SUM:=f4e357b09eaf5d8b1f1920cf3493a555
 
+define Download/brcmsmac
+  FILE:=$(PKG_BRCMSMAC_FW_SOURCE)
+  URL:=$(PKG_BRCMSMAC_FW_SOURCE_URL)
+  MD5SUM:=$(PKG_BRCMSMAC_FW_MD5SUM)
+endef
+$(eval $(call Download,brcmsmac))
+
 define KernelPackage/brcmsmac
   $(call KernelPackage/mac80211/Default)
   TITLE:=Broadcom IEEE802.11n PCIe SoftMAC WLAN driver
@@ -1250,6 +1260,7 @@ MAKE_OPTS:= \
 	CONFIG_ATH9K_COMMON=$(if $(CONFIG_PACKAGE_kmod-ath9k-common),m) \
 	CONFIG_ATH9K_DEBUGFS=$(if $(CONFIG_PACKAGE_MAC80211_DEBUGFS),y) \
 	CONFIG_AR5523= \
+	CONFIG_WIL6210= \
 	CONFIG_CARL9170=$(if $(CONFIG_PACKAGE_kmod-carl9170),m) \
 	CONFIG_CARL9170_DEBUGFS=$(if $(CONFIG_PACKAGE_MAC80211_DEBUGFS),y) \
 	CONFIG_COMPAT_ZD1211RW=$(if $(CONFIG_PACKAGE_kmod-zd1211rw),m) \
@@ -1260,6 +1271,7 @@ MAKE_OPTS:= \
 	CONFIG_P54_SPI_DEFAULT_EEPROM=n \
 	CONFIG_RT2X00=$(if $(CONFIG_PACKAGE_kmod-rt2x00-lib),m) \
 	CONFIG_RT2X00_LIB=$(if $(CONFIG_PACKAGE_kmod-rt2x00-lib),m) \
+	CONFIG_RT2X00_LIB_MMIO=$(if $(CONFIG_PACKAGE_kmod-rt2x00-pci),m) \
 	CONFIG_RT2X00_LIB_PCI=$(if $(CONFIG_PACKAGE_kmod-rt2x00-pci),m) \
 	CONFIG_RT2X00_LIB_USB=$(if $(CONFIG_PACKAGE_kmod-rt2x00-usb),m) \
 	CONFIG_RT2X00_LIB_SOC=$(if $(CONFIG_PACKAGE_kmod-rt2x00-soc),m) \
@@ -1281,7 +1293,7 @@ MAKE_OPTS:= \
 	CONFIG_RTL8187=$(if $(CONFIG_PACKAGE_kmod-rtl8187),m) \
 	CONFIG_RTL8192CE= \
 	CONFIG_RTLWIFI= \
-	CONFIG_MAC80211_HWSIM=$(if $(CONFIG_PACKAGE_kmod-mac80211-hwsim),m) \
+	CONFIG_COMPAT_MAC80211_HWSIM=$(if $(CONFIG_PACKAGE_kmod-mac80211-hwsim),m) \
 	CONFIG_PCMCIA= \
 	CONFIG_LIBIPW=$(if $(CONFIG_PACKAGE_kmod-net-libipw),m) \
 	CONFIG_LIBERTAS=$(if $(CONFIG_PACKAGE_kmod-libertas-sd)$(CONFIG_PACKAGE_kmod-libertas-usb),m) \
@@ -1529,7 +1541,7 @@ endef
 define KernelPackage/mwl8k/install
 	$(INSTALL_DIR) $(1)/lib/firmware/mwl8k
 	$(INSTALL_DATA) \
-		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/mwl8k/fmimage_8366_ap-2.fw \
+		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/mwl8k/fmimage_8366_ap-3.fw \
 		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/mwl8k/fmimage_8366.fw \
 		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/mwl8k/helper_8366.fw \
 		$(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/mwl8k/fmimage_8687.fw \
