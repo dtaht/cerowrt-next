@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2008-2012 OpenWrt.org
+# Copyright (C) 2008-2013 OpenWrt.org
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
@@ -24,16 +24,6 @@ ERASE_SIZE_64K:=64
 
 # define JFFS2 sizes for include/image.mk
 JFFS2_BLOCKSIZE:=64k 128k
-
-
-###
-### Image/Prepare
-###
-
-define Image/Prepare
-### Dummy comment for indented calls of Image/Prepare
-	cp '$(LINUX_DIR)/arch/arm/boot/zImage' '$(BIN_DIR)/$(IMG_PREFIX)-zImage'
-endef
 
 
 ###
@@ -73,7 +63,6 @@ define Image/BuildKernel/ARM/zImage
 	# $(BOARD) kernel zImage for $(1)
 	echo -en $(2) > '$(KDIR)/$(1)-zImage'
 	cat '$(LINUX_DIR)/arch/arm/boot/zImage' >> '$(KDIR)/$(1)-zImage'
-	cp '$(KDIR)/$(1)-zImage' '$(BIN_DIR)/openwrt-$(1)-zImage'
 endef
 
 define Image/BuildKernel/ARM/uImage
@@ -83,7 +72,9 @@ define Image/BuildKernel/ARM/uImage
 	'$(STAGING_DIR_HOST)/bin/mkimage' -A arm -O linux -T kernel \
 	-C none -a 0x00008000 -e 0x00008000 -n 'Linux-$(LINUX_VERSION)' \
 	-d '$(KDIR)/$(1)-zImage' '$(KDIR)/$(1)-uImage'
+ ifeq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),y)  # only copy uImage for ramdisk build
 	cp '$(KDIR)/$(1)-uImage' '$(BIN_DIR)/openwrt-$(1)-uImage'
+ endif
 endef
 
 define Image/BuildKernel/JFFS2uImage
@@ -125,7 +116,6 @@ endef
 
 define Image/Build/squashfs
 $(call prepare_generic_squashfs,$(KDIR)/root.squashfs)
-	cp '$(KDIR)/root.squashfs' '$(BIN_DIR)/$(IMG_PREFIX)-root.squashfs'
 endef
 
 ## generate defines for all JFFS2 block sizes
