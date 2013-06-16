@@ -497,7 +497,7 @@ start() {
 	scan_interfaces
 
 	local lanaddr
-	config_get lanaddr "lan" ipaddr
+	config_get lanaddr "se00" ipaddr
 
 	config_load dhcp
 
