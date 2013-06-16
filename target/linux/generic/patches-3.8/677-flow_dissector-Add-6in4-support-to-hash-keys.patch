@@ -1,0 +1,25 @@
+From 1bc913543f851652e1727c5791e3ec8f82e36504 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Dave=20T=C3=A4ht?= <dave.taht@bufferbloat.net>
+Date: Tue, 4 Jun 2013 01:18:41 -0700
+Subject: [PATCH] flow_dissector: Add 6in4 support to hash keys
+
+---
+ net/core/flow_dissector.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 466820b..edbcb42 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -123,6 +123,8 @@ ipv6:
+ 		}
+ 		break;
+ 	}
++	case IPPROTO_IPV6:
++	        proto = __constant_htons(ETH_P_IPV6);
+ 	case IPPROTO_IPIP:
+ 		goto again;
+ 	default:
+-- 
+1.7.9.5
+

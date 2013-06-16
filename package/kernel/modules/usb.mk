@@ -135,6 +135,7 @@ define KernelPackage/usb2
 	CONFIG_USB_EHCI_ATH79=y \
 	CONFIG_USB_EHCI_BCM63XX=y \
 	CONFIG_USB_OCTEON_EHCI=y \
+	CONFIG_USB_EHCI_HCD_ORION=y \
 	CONFIG_USB_EHCI_HCD_PLATFORM=y
 ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,3.8.0)),1)
   FILES:= \
@@ -848,7 +849,7 @@ define KernelPackage/usb-net-cdc-mbim
   KCONFIG:=CONFIG_USB_NET_CDC_MBIM
   FILES:= \
    $(LINUX_DIR)/drivers/$(USBNET_DIR)/cdc_mbim.ko
-  AUTOLOAD:=$(call AutoLoad,61,cdc_mbim)
+  AUTOLOAD:=$(call AutoLoad,62,cdc_mbim)
   $(call AddDepends/usb-net,+kmod-usb-wdm,+kmod-usb-net-cdc-ncm)
 endef
 
