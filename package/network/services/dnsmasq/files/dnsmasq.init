@@ -74,7 +74,7 @@ append_addnhosts() {
 }
 
 append_bogusnxdomain() {
-       xappend "--bogus-nxdomain=$1"
+    xappend "--bogus-nxdomain=$1"
 }
 
 dnsmasq() {
@@ -402,11 +402,7 @@ dhcp_domain_add() {
 	[ -n "$ip" ] || return 0
 
 	for name in $names; do
-		if [ -z "$record" ]; then
-			record="$name"
-		else
-			record="$record/$name"
-		fi
+		record="${record:+$record/}$name"
 	done
 
 	xappend "--address=/$record/$ip"
@@ -464,7 +460,7 @@ dhcp_cname_add() {
 
 dhcp_hostrecord_add() {
 	local cfg="$1"
-	local names addresses record
+	local names addresses record val
 
 	config_get names "$cfg" name "$2"
 	if [ -z "$names" ]; then
@@ -476,18 +472,9 @@ dhcp_hostrecord_add() {
 		return 0
 	fi
 
-	build_list() {
-		for i in $1; do
-			if [ -z "$record" ]; then
-				record="$i"
-			else
-				record="$record,$i"
-			fi
-		done
-	}
-
-	build_list "$names"
-	build_list "$addresses"
+	for val in $names $addresses; do
+		record="${record:+$record,}$val"
+	done
 
 	xappend "--host-record=$record"
 }
@@ -532,13 +519,8 @@ start() {
 
 	# add own hostname
 	[ $ADD_LOCAL_HOSTNAME -eq 1 ] && [ -n "$lanaddr" ] && {
-		local hostname="$(uci_get system.@system[0].hostname)"
-
-		if [ -n "$DOMAIN" ]; then
-			dhcp_hostrecord_add "" "${hostname:-OpenWrt}.$DOMAIN ${hostname:-OpenWrt}" "$lanaddr"
-		else
-			dhcp_hostrecord_add "" "${hostname:-OpenWrt}" "$lanaddr"
-		fi
+		local hostname="$(uci_get system @system[0] hostname OpenWrt)"
+		dhcp_hostrecord_add "" "$hostname${DOMAIN:+.$DOMAIN $hostname}" "$lanaddr"
 	}
 
 	echo >> $CONFIGFILE
