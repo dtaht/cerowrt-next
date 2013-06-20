@@ -93,7 +93,7 @@ define BuildFirmware/OF
 endef
 
 define BuildFirmware/OF/initramfs
-	$(call MkImageLzmaDtb,$(2),$(3))
+	$(call MkImageLzmaDtb,$(2),$(3),$(4))
 	$(CP) $(KDIR)/vmlinux-$(2).uImage $(call imgname,$(1),$(2))-uImage.bin
 endef
 
@@ -113,8 +113,8 @@ BuildFirmware/Default4M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(
 # $(2) = lowercase board name
 # $(3) = dts file
 ralink_default_fw_size_8M=8060928
-BuildFirmware/Default8M/squashfs=$(call BuildFirmware/OF,$(1),$(2),$(3),$(ralink_default_fw_size_8M))
-BuildFirmware/Default8M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3))
+BuildFirmware/Default8M/squashfs=$(call BuildFirmware/OF,$(1),$(2),$(3),$(ralink_default_fw_size_8M),$(4))
+BuildFirmware/Default8M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3),$(4))
 
 # Build images for a custom sized flash layout
 # $(1) = squashfs/initramfs
@@ -322,6 +322,10 @@ Image/Build/Profile/HW550-3G=$(call BuildFirmware/Default8M/$(1),$(1),hw550-3g,H
 belkin_f5d8235v2_mtd_size=7929856
 Image/Build/Profile/F5D8235V2=$(call BuildFirmware/CustomFlash/$(1),$(1),f5d8235v2,F5D8235_V2,$(belkin_f5d8235v2_mtd_size))
 
+# 0x770000
+belkin_f7c027_mtd_size=7798784
+Image/Build/Profile/F7C027=$(call BuildFirmware/CustomFlash/$(1),$(1),belkinf7c027,F7C027,$(belkin_f7c027_mtd_size))
+
 Image/Build/Profile/FONERA20N=$(call BuildFirmware/Edimax/$(1),$(1),fonera20n,FONERA20N,$(ralink_default_fw_size_8M),RSDK,NL1T,0x50000,0xc0000)
 
 Image/Build/Profile/RT-N13U=$(call BuildFirmware/Default8M/$(1),$(1),rt-n13u,RT-N13U)
@@ -329,6 +333,9 @@ Image/Build/Profile/RT-N13U=$(call BuildFirmware/Default8M/$(1),$(1),rt-n13u,RT-
 Image/Build/Profile/FREESTATION5=$(call BuildFirmware/Default8M/$(1),$(1),freestation5,FREESTATION5)
 
 Image/Build/Profile/MOFI3500-3GN=$(call BuildFirmware/Default8M/$(1),$(1),mofi3500-3gn,MOFI3500-3GN)
+
+# Kernel name should be "Linux Kernel Image" to make the OpenWrt image installable from factory Web UI
+Image/Build/Profile/MPRA2=$(call BuildFirmware/Default8M/$(1),$(1),mpr-a2,MPRA2,Linux Kernel Image)
 
 Image/Build/Profile/NBG-419N=$(call BuildFirmware/Default4M/$(1),$(1),nbg-419n,NBG-419N)
 
@@ -451,11 +458,13 @@ define Image/Build/Profile/Default
 	$(call Image/Build/Profile/DAP1350,$(1))
 	$(call Image/Build/Profile/DAP1350WW,$(1))
 	$(call Image/Build/Profile/ESR-9753,$(1))
+	$(call Image/Build/Profile/F7C027,$(1))
 	$(call Image/Build/Profile/F5D8235V2,$(1))
 	$(call Image/Build/Profile/FONERA20N,$(1))
 	$(call Image/Build/Profile/FREESTATION5,$(1))
 	$(call Image/Build/Profile/HW550-3G,$(1))
 	$(call Image/Build/Profile/MOFI3500-3GN,$(1))
+	$(call Image/Build/Profile/MPRA2,$(1))
 	$(call Image/Build/Profile/MZKW300NH2,$(1))
 	$(call Image/Build/Profile/NBG-419N,$(1))
 	$(call Image/Build/Profile/NW718,$(1))

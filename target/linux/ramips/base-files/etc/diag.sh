@@ -55,6 +55,9 @@ get_status_led() {
 	mofi3500-3gn)
 		status_led="mofi3500-3gn:green:status"
 		;;
+	mpr-a2)
+		status_led="mpr-a2:red:power"
+		;;
 	nbg-419n)
 		status_led="nbg-419n:green:power"
 		;;
@@ -129,6 +132,9 @@ get_status_led() {
 	xdxrn502j)
 		status_led="xdxrn502j:green:power"
 		;;
+	f7c027)
+		status_led="belkin:orange:status"
+        ;;
 	esac
 }
 
