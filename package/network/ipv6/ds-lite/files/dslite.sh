@@ -48,6 +48,7 @@ proto_dslite_setup() {
 	json_add_int ttl "${ttl:-64}"
 	json_add_string local "$ip6addr"
 	json_add_string remote "$peeraddr"
+	json_add_string tos inherit
 	[ -n "$tunlink" ] && json_add_string link "$tunlink"
 	proto_close_tunnel
 
