@@ -37,11 +37,13 @@ platform_check_image() {
 	dir-620-d1 | \
 	dap-1350 | \
 	esr-9753 | \
+	f7c027 | \
 	fonera20n | \
 	rt-n13u | \
 	freestation5 | \
 	hw550-3g | \
 	mofi3500-3gn | \
+	mpr-a2 | \
 	mzk-w300nh2 | \
 	nbg-419n | \
 	nw718 | \

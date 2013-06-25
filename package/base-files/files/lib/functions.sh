@@ -203,7 +203,7 @@ config_list_foreach() {
 	done
 }
 
-load_modules() {
+insert_modules() {
 	[ -d /etc/modules.d ] && {
 		cd /etc/modules.d
 		sed 's/^[^#]/insmod &/' $* | ash 2>&- || :

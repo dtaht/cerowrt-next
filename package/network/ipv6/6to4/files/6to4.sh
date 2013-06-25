@@ -71,6 +71,7 @@ proto_6to4_setup() {
 	json_add_int mtu "${mtu:-1280}"
 	json_add_int ttl "${ttl:-64}"
 	json_add_string local "$ipaddr"
+	json_add_string tos inherit
 	proto_close_tunnel
 
 	proto_send_update "$cfg"
