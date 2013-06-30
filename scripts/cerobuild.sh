@@ -13,10 +13,10 @@ CEROFILES_REVISION="cerofiles/cerowrt-next"
 UPDATE=0
 HEAD=0
 SOURCE_DIR=./dl
-UPDATE_ENV=1
+UPDATE_ENV=0
 UPDATE_PACKAGES=1
 INSTALL_PACKAGES=1
-UPDATE_CONFIG=1
+UPDATE_CONFIG=0
 
 usage()
 {
@@ -30,14 +30,16 @@ Usage: $0 [-uHEPIC] [-s <source dir>]
                     the commits specified by the config files in the current checkout.
                     (This may break the build in unexpected ways.)
 
- -E:                Do not update the env/ directory from cerofiles.
+ -e:                Force updating the env/ directory from cerofiles (by default it will be
+                    updated if the checked out branch is 'cerobuild', or no env exists).
 
  -P:                Do not update the package feed source repositories.
 
- -I:                Do not (re)install the packages listed in packages.list and
-                    override.list in cerofiles.
+ -i/I:              Do/do not (re)install the packages listed in packages.list and
+                    override.list in cerofiles (default is to install on first run, not on
+                    subsequent runs).
 
- -C:                Do not update (override) .config from the cerofiles config file.
+ -c:                Force update (override) of .config from the cerofiles config file.
 
  -s <source dir>:   Specify source directory to keep package repositories in.
                     Default: $SOURCE_DIR
@@ -47,8 +49,13 @@ EOF
 
 error()
 {
-    echo "--- $@" >&2
+    warning "$@"
     exit 1
+}
+
+warning()
+{
+    echo "--- $@" >&2
 }
 
 
@@ -79,7 +86,11 @@ update_env()
     if ! git remote | grep -q cerofiles; then
         git remote add cerofiles "$CEROFILES_URL"
     fi
-    git fetch cerofiles && git merge --no-edit $CEROFILES_REVISION || error "Unable to merge cerofiles")
+    if [ "$(git symbolic-ref --short HEAD)" != "cerobuild" -a "$UPDATE_ENV" -eq "0" ]; then
+        warning "Current env branch is not cerobuild, not merging cerofiles."
+    else
+        git fetch cerofiles && git merge --no-edit $CEROFILES_REVISION || error "Unable to merge cerofiles"
+    fi)
 }
 
 relpath()
@@ -106,18 +117,26 @@ add_feed()
     echo src-link $name $target >> .feeds.conf.cerobuild
 }
 
-while getopts "uhHs:EPIC" opt; do
+[ -e ".git" -a -e "scripts/env" -a -e "scripts/feeds" ] || error "Can't find openwrt build scripts. Script run from wrong dir?"
+
+while getopts "uhHs:ePIic" opt; do
     case $opt in
         u) UPDATE=1;;
         h) usage;;
         H) HEAD=1;;
         s) SOURCE_DIR=$OPTARG;;
-        E) UPDATE_ENV=0;;
+        e) UPDATE_ENV=1;;
         P) UPDATE_PACKAGES=0;;
         I) INSTALL_PACKAGES=0;;
+        i) INSTALL_PACKAGES=1;;
         C) UPDATE_CONFIG=0;;
+        c) UPDATE_CONFIG=1;;
     esac
 done
+
+if [ -f .cerobuild.config ]; then
+    . .cerobuild.config
+fi
 
 
 if [ -f cerofiles.revision ]; then
@@ -141,10 +160,8 @@ if [ "$UPDATE_PACKAGES" == "1" ]; then
     [ -e "feeds.conf" ] || ln -s .feeds.conf.cerobuild feeds.conf
 fi
 
-if [ "$UPDATE_ENV" == "1" ]; then
-    echo "--- Updating env from cerofiles..."
-    update_env
-fi
+echo "--- Updating env from cerofiles..."
+update_env
 
 if [ "$INSTALL_PACKAGES" == "1" ]; then
     echo "--- Installing packages..."
@@ -153,10 +170,20 @@ if [ "$INSTALL_PACKAGES" == "1" ]; then
     ./scripts/feeds install $(cat env/packages.list) || error "Couldn't install packages"
 fi
 
-if [ "$UPDATE_CONFIG" == "1" ]; then
+if [ ! -e ".config" -o "$UPDATE_CONFIG" == "1" ]; then
     echo "--- Copying .config and running 'make defconfig'..."
     cp env/config-wndr3700v2 .config || error "Unable to copy .config"
     make defconfig || error "Unable to run defconfig"
+else
+    if [ -e ".config" ]; then
+        echo "--- Not overwriting existing .config"
+    fi
 fi
+
+cat >.cerobuild.config <<EOF
+# cerobuild config created at $(date)
+INSTALL_PACKAGES=0
+SOURCE_DIR="$SOURCE_DIR"
+EOF
 
 echo "--- Build updated. Run make to build."
