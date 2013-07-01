@@ -10,12 +10,13 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=mac80211
 
-PKG_VERSION:=2013-06-13
+PKG_VERSION:=2013-06-27
 PKG_RELEASE:=1
 PKG_SOURCE_URL:=http://mirror2.openwrt.org/sources
-PKG_MD5SUM:=986749f5fbc5ec9b963e49c7171be300
+PKG_BACKPORT_VERSION:=.1
+PKG_MD5SUM:=73bd220c64c5c6fdc22b3bb7f180644f
 
-PKG_SOURCE:=compat-wireless-$(PKG_VERSION).tar.bz2
+PKG_SOURCE:=compat-wireless-$(PKG_VERSION)$(PKG_BACKPORT_VERSION).tar.bz2
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/compat-wireless-$(PKG_VERSION)
 PKG_BUILD_PARALLEL:=1
 
@@ -255,7 +256,7 @@ endef
 
 define KernelPackage/rt2x00-soc
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @TARGET_ramips +kmod-rt2x00-mmio +kmod-rt2x00-lib
+  DEPENDS+= @TARGET_ramips @!TARGET_ramips_mt7620a +kmod-rt2x00-mmio +kmod-rt2x00-lib
   TITLE+= (SoC)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2x00soc.ko
   AUTOLOAD:=$(call AutoLoad,26,rt2x00soc)
