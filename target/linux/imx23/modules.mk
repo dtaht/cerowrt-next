@@ -4,13 +4,27 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 
+define KernelPackage/rtc-stmp3xxx
+    SUBMENU:=$(OTHER_MENU)
+    TITLE:=STMP3xxx SoC built-in RTC support
+    DEPENDS:=@TARGET_imx23
+    $(call AddDepends/rtc)
+    KCONFIG:=\
+	CONFIG_RTC_CLASS=y \
+	CONFIG_RTC_DRV_STMP=m
+    FILES:=$(LINUX_DIR)/drivers/rtc/rtc-stmp3xxx.ko
+    AUTOLOAD:=$(call AutoLoad,50,rtc-stmp3xxx)
+endef
+
+$(eval $(call KernelPackage,rtc-stmp3xxx))
+
 define KernelPackage/wdt-stmp3xxx
     SUBMENU:=$(OTHER_MENU)
     TITLE:=STMP3xxx Watchdog timer
-    DEPENDS:=@(TARGET_imx23)
+    DEPENDS:=kmod-rtc-stmp3xxx
     KCONFIG:=CONFIG_STMP3XXX_RTC_WATCHDOG
     FILES:=$(LINUX_DIR)/drivers/$(WATCHDOG_DIR)/stmp3xxx_rtc_wdt.ko
-    AUTOLOAD:=$(call AutoLoad,50,stmp3xxx_rtc_wdt)
+    AUTOLOAD:=$(call AutoLoad,51,stmp3xxx_rtc_wdt)
 endef
 
 define KernelPackage/wdt-stmp3xxx/description
@@ -18,9 +32,10 @@ define KernelPackage/wdt-stmp3xxx/description
 endef
 
 $(eval $(call KernelPackage,wdt-stmp3xxx))
+
 define KernelPackage/usb-chipidea
     TITLE:=Support for ChipIdea controllers
-    DEPENDS:=+kmod-usb2 +kmod-usb-mxs-phy
+    DEPENDS:=@TARGET_imx23
     KCONFIG:= \
 	CONFIG_USB_CHIPIDEA \
 	CONFIG_USB_CHIPIDEA_HOST=y \
@@ -40,11 +55,11 @@ $(eval $(call KernelPackage,usb-chipidea,1))
 
 define KernelPackage/usb-mxs-phy
     TITLE:=Support for Freescale MXS USB PHY controllers
-    DEPENDS:=+kmod-usb2
+    DEPENDS:=+kmod-usb-chipidea
     KCONFIG:= \
 	CONFIG_USB_MXS_PHY
-	FILES:=$(LINUX_DIR)/drivers/usb/otg/mxs-phy.ko
-    AUTOLOAD:=$(call AutoLoad,50,mxs-phy,1)
+	FILES:=$(LINUX_DIR)/drivers/usb/phy/phy-mxs-usb.ko
+    AUTOLOAD:=$(call AutoLoad,50,phy-mxs-usb,1)
     $(call AddDepends/usb)
 endef
 
@@ -56,6 +71,7 @@ $(eval $(call KernelPackage,usb-mxs-phy,1))
 
 define KernelPackage/usb-net-smsc95xx
     TITLE:=SMSC95xx USB/2.0 Ethernet driver
+    DEPENDS:=@TARGET_imx23
     KCONFIG:=CONFIG_USB_NET_SMSC95XX
     FILES:=$(LINUX_DIR)/drivers/net/usb/smsc95xx.ko
     AUTOLOAD:=$(call AutoLoad,64,smsc95xx)
@@ -67,5 +83,4 @@ define KernelPackage/usb-net-smsc95xx/description
 endef
 
 $(eval $(call KernelPackage,usb-net-smsc95xx))
-
 
