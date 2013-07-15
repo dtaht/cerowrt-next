@@ -1,0 +1,35 @@
+From 7e1b68f3b7e119db7c44ea86066192661a6eeff2 Mon Sep 17 00:00:00 2001
+From: Dave Taht <dave.taht@bufferbloat.net>
+Date: Tue, 1 Jan 2013 08:57:45 -0800
+Subject: [PATCH 6/7] nfq_codel: add license and reduce flows and quantum
+
+Using a smaller quantum appears to be a win.
+Bug in previous patch excluded license file
+---
+ net/sched/sch_nfq_codel.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/net/sched/sch_nfq_codel.c b/net/sched/sch_nfq_codel.c
+index 494cdcc..6b7413e 100644
+--- a/net/sched/sch_nfq_codel.c
++++ b/net/sched/sch_nfq_codel.c
+@@ -388,9 +388,9 @@ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt)
+ 	struct fq_codel_sched_data *q = qdisc_priv(sch);
+ 	int i;
+ 
+-	sch->limit = 10*1024;
++	sch->limit = 1024;
+ 	q->flows_cnt = 1024;
+-	q->quantum = psched_mtu(qdisc_dev(sch));
++	q->quantum = 300;
+ 	q->perturbation = net_random();
+ 	INIT_LIST_HEAD(&q->new_flows);
+ 	INIT_LIST_HEAD(&q->old_flows);
+@@ -626,3 +626,4 @@ static void __exit fq_codel_module_exit(void)
+ module_init(fq_codel_module_init)
+ module_exit(fq_codel_module_exit)
+ MODULE_AUTHOR("Eric Dumazet");
++MODULE_LICENSE("GPL");
+-- 
+1.7.9.5
+
