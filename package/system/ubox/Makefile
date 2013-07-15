@@ -1,13 +1,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ubox
-PKG_VERSION:=2013-07-02
+PKG_VERSION:=2013-07-15
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=git://nbd.name/luci2/ubox.git
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-PKG_SOURCE_VERSION:=267dd987b1aec750f8839d1d8d8c2f80d9f1107e
+PKG_SOURCE_VERSION:=b766d2b693dbfa4367166c9475e56b0aa3546aa2
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 CMAKE_INSTALL:=1
 
@@ -33,7 +33,6 @@ define Package/block-mount
   CATEGORY:=Base system
   TITLE:=Block device mounting and checking
   DEPENDS:=+ubox +libubox +libuci
-  MENU:=1
 endef
 
 define Package/ubox/install
@@ -43,14 +42,15 @@ define Package/ubox/install
 	ln -s /sbin/mount_root $(1)/sbin/switch2jffs
 	ln -s /sbin/mount_root $(1)/sbin/jffs2reset
 	ln -s /sbin/mount_root $(1)/sbin/jffs2mark
-#	ln -s /sbin/kmodloader $(1)/usr/sbin/lsmod
+	ln -s /sbin/kmodloader $(1)/usr/sbin/lsmod
 	ln -s /sbin/kmodloader $(1)/usr/sbin/modinfo
 endef
 
 define Package/block-mount/install
-	$(INSTALL_DIR) $(1)/sbin $(1)/usr/sbin $(1)/etc/hotplug.d/block $(1)/etc/init.d/
+	$(INSTALL_DIR) $(1)/sbin $(1)/usr/sbin $(1)/etc/hotplug.d/block $(1)/etc/init.d/ $(1)/etc/uci-defaults/
 
 	$(INSTALL_BIN) ./files/fstab.init $(1)/etc/init.d/fstab
+	$(INSTALL_DATA) ./files/fstab.default $(1)/etc/uci-defaults/10-fstab
 	$(INSTALL_DATA) ./files/mount.hotplug $(1)/etc/hotplug.d/block/10-mount
 
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/block $(1)/sbin/

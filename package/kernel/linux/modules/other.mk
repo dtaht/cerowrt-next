@@ -640,7 +640,7 @@ define KernelPackage/pps
   TITLE:=PPS support
   KCONFIG:=CONFIG_PPS
   FILES:=$(LINUX_DIR)/drivers/pps/pps_core.ko
-  AUTOLOAD:=$(call AutoLoad,20,pps_core)
+  AUTOLOAD:=$(call AutoLoad,17,pps_core,1)
 endef
 
 define KernelPacakge/pps/description
@@ -658,7 +658,7 @@ define KernelPackage/ptp
   DEPENDS:=+kmod-pps
   KCONFIG:=CONFIG_PTP_1588_CLOCK
   FILES:=$(LINUX_DIR)/drivers/ptp/ptp.ko
-  AUTOLOAD:=$(call AutoLoad,25,ptp)
+  AUTOLOAD:=$(call AutoLoad,18,ptp,1)
 endef
 
 define KernelPacakge/ptp/description
@@ -684,3 +684,17 @@ define KernelPacakge/ptp-gianfar/description
 endef
 
 $(eval $(call KernelPackage,ptp-gianfar))
+
+define KernelPackage/random-core
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Hardware Random Number Generator Core support
+  KCONFIG:=CONFIG_HW_RANDOM
+  FILES:=$(LINUX_DIR)/drivers/char/hw_random/rng-core.ko
+  AUTOLOAD:=$(call AutoLoad,10,rng-core)
+endef
+
+define KernelPackage/random-core/description
+   Kernel module for the HW random number generator core infrastructure
+endef
+
+$(eval $(call KernelPackage,random-core))
