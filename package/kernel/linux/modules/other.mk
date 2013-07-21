@@ -13,7 +13,7 @@ WATCHDOG_DIR:=watchdog
 define KernelPackage/bluetooth
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Bluetooth support
-  DEPENDS:=@USB_SUPPORT +kmod-usb-core
+  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-crypto-hash
   KCONFIG:= \
 	CONFIG_BLUEZ \
 	CONFIG_BLUEZ_L2CAP \
@@ -135,7 +135,7 @@ $(eval $(call KernelPackage,gpio-dev))
 define KernelPackage/gpio-mcp23s08
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Microchip MCP23xxx I/O expander
-  DEPENDS:=@GPIO_SUPPORT
+  DEPENDS:=@GPIO_SUPPORT +PACKAGE_kmod-i2c-core:kmod-i2c-core
   KCONFIG:=CONFIG_GPIO_MCP23S08
   FILES:=$(LINUX_DIR)/drivers/gpio/gpio-mcp23s08.ko
   AUTOLOAD:=$(call AutoLoad,40,gpio-mcp23s08)
@@ -239,6 +239,7 @@ $(eval $(call KernelPackage,oprofile))
 define KernelPackage/rfkill
   SUBMENU:=$(OTHER_MENU)
   TITLE:=RF switch subsystem support
+  DEPENDS:=@USE_RFKILL +kmod-input-core
   KCONFIG:= \
     CONFIG_RFKILL \
     CONFIG_RFKILL_INPUT=y \
@@ -247,7 +248,6 @@ define KernelPackage/rfkill
   FILES:= \
     $(LINUX_DIR)/net/rfkill/rfkill.ko
   AUTOLOAD:=$(call AutoLoad,20,rfkill)
-  $(call SetDepends/rfkill)
 endef
 
 define KernelPackage/rfkill/description
@@ -439,7 +439,7 @@ $(eval $(call KernelPackage,rtc-marvell))
 define KernelPackage/rtc-pcf8563
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Philips PCF8563/Epson RTC8564 RTC support
-  $(call AddDepends/rtc)
+  $(call AddDepends/rtc,+kmod-i2c-core)
   KCONFIG:=CONFIG_RTC_DRV_PCF8563
   FILES:=$(LINUX_DIR)/drivers/rtc/rtc-pcf8563.ko
   AUTOLOAD:=$(call AutoLoad,60,rtc-pcf8563)
@@ -488,6 +488,7 @@ define KernelPackage/mtdtests
   SUBMENU:=$(OTHER_MENU)
   TITLE:=MTD subsystem tests
   KCONFIG:=CONFIG_MTD_TESTS
+  DEPENDS:=+kmod-nand
   FILES:=\
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_nandecctest.ko \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_oobtest.ko \

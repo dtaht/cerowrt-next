@@ -38,7 +38,7 @@ $(eval $(call KernelPackage,ipt-core))
 
 define AddDepends/ipt
   SUBMENU:=$(NF_MENU)
-  DEPENDS+= kmod-ipt-core $(1)
+  DEPENDS+= +kmod-ipt-core $(1)
 endef
 
 
@@ -89,7 +89,7 @@ define KernelPackage/ipt-filter
   KCONFIG:=$(KCONFIG_IPT_FILTER)
   FILES:=$(foreach mod,$(IPT_FILTER-m),$(LINUX_DIR)/net/$(mod).ko)
   AUTOLOAD:=$(call AutoLoad,45,$(notdir $(IPT_FILTER-m)))
-  $(call AddDepends/ipt,+kmod-lib-textsearch)
+  $(call AddDepends/ipt,+kmod-lib-textsearch +kmod-ipt-conntrack)
 endef
 
 define KernelPackage/ipt-filter/description
@@ -312,7 +312,7 @@ $(eval $(call KernelPackage,ipt-led))
 
 define KernelPackage/ipt-tproxy
   TITLE:=Transparent proxying support
-  DEPENDS+=+IPV6:kmod-ipv6
+  DEPENDS+=+kmod-ipt-conntrack +IPV6:kmod-ipv6 +IPV6:kmod-ip6tables
   KCONFIG:= \
   	CONFIG_NETFILTER_TPROXY \
   	CONFIG_NETFILTER_XT_MATCH_SOCKET \
@@ -332,6 +332,7 @@ $(eval $(call KernelPackage,ipt-tproxy))
 
 define KernelPackage/ipt-tee
   TITLE:=TEE support
+  DEPENDS:=+kmod-ipt-conntrack +IPV6:kmod-ipv6
   KCONFIG:= \
   	CONFIG_NETFILTER_XT_TARGET_TEE
   FILES:= \
@@ -423,6 +424,7 @@ ARP_MODULES = arp_tables arpt_mangle arptable_filter
 define KernelPackage/arptables
   SUBMENU:=$(NF_MENU)
   TITLE:=ARP firewalling modules
+  DEPENDS:=+kmod-ipt-core
   FILES:=$(LINUX_DIR)/net/ipv4/netfilter/arp*.ko
   KCONFIG:=CONFIG_IP_NF_ARPTABLES \
     CONFIG_IP_NF_ARPFILTER \
@@ -440,6 +442,7 @@ $(eval $(call KernelPackage,arptables))
 define KernelPackage/ebtables
   SUBMENU:=$(NF_MENU)
   TITLE:=Bridge firewalling modules
+  DEPENDS:=+kmod-ipt-core
   FILES:=$(foreach mod,$(EBTABLES-m),$(LINUX_DIR)/net/$(mod).ko)
   KCONFIG:=CONFIG_BRIDGE_NETFILTER=y \
 	$(KCONFIG_EBTABLES)
@@ -579,6 +582,7 @@ $(eval $(call KernelPackage,nf-conntrack-netlink))
 define KernelPackage/ipt-hashlimit
   SUBMENU:=$(NF_MENU)
   TITLE:=Netfilter hashlimit match
+  DEPENDS:=+kmod-ipt-core
   KCONFIG:=$(KCONFIG_IPT_HASHLIMIT)
   FILES:=$(LINUX_DIR)/net/netfilter/xt_hashlimit.ko
   AUTOLOAD:=$(call AutoLoad,50,xt_hashlimit)

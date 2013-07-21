@@ -121,7 +121,7 @@ $(eval $(call KernelPackage,crypto-iv))
 
 define KernelPackage/crypto-hw-talitos
   TITLE:=Freescale integrated security engine (SEC) driver
-  DEPENDS:=+kmod-crypto-aes
+  DEPENDS:=+kmod-crypto-aes +kmod-crypto-manager +kmod-crypto-hash +kmod-random-core
   KCONFIG:= \
 	CONFIG_CRYPTO_DEV_TALITOS
   FILES:= \
@@ -135,7 +135,7 @@ $(eval $(call KernelPackage,crypto-hw-talitos))
 
 define KernelPackage/crypto-hw-padlock
   TITLE:=VIA PadLock ACE with AES/SHA hw crypto module
-  DEPENDS:=+kmod-crypto-aes
+  DEPENDS:=+kmod-crypto-aes +kmod-crypto-manager
   KCONFIG:= \
 	CONFIG_CRYPTO_DEV_PADLOCK \
 	CONFIG_CRYPTO_DEV_PADLOCK_AES \
@@ -152,6 +152,7 @@ $(eval $(call KernelPackage,crypto-hw-padlock))
 
 define KernelPackage/crypto-hw-geode
   TITLE:=AMD Geode hardware crypto module
+  DEPENDS:=+kmod-crypto-manager
   KCONFIG:= \
 	CONFIG_CRYPTO_DEV_GEODE
   FILES:=$(LINUX_DIR)/drivers/crypto/geode-aes.ko
@@ -183,7 +184,7 @@ define KernelPackage/crypto-hw-ppc4xx
 	CONFIG_CRYPTO_DEV_PPC4XX
   FILES:=$(LINUX_DIR)/drivers/crypto/amcc/crypto4xx.ko
   AUTOLOAD:=$(call AutoLoad,90,crypto4xx)
-  $(call AddDepends/crypto)
+  $(call AddDepends/crypto,+kmod-crypto-manager +kmod-crypto-hash)
 endef
 
 define KernelPackage/crypto-hw-ppc4xx/description
@@ -386,7 +387,7 @@ define KernelPackage/crypto-misc
   FILES:= \
 	$(LINUX_DIR)/crypto/anubis.ko \
 	$(LINUX_DIR)/crypto/camellia$(camellia_mod_suffix).ko \
-	$((if $(call kernel_patchver_ge,3.7),$(LINUX_DIR)/crypto/cast_common.ko) \
+	$(if $(call kernel_patchver_ge,3.7),$(LINUX_DIR)/crypto/cast_common.ko) \
 	$(LINUX_DIR)/crypto/cast5$(cast56_mod_suffix).ko \
 	$(LINUX_DIR)/crypto/cast6$(cast56_mod_suffix).ko \
 	$(LINUX_DIR)/crypto/fcrypt.ko \
@@ -396,11 +397,10 @@ define KernelPackage/crypto-misc
 	$(LINUX_DIR)/crypto/tgr192.ko \
 	$(LINUX_DIR)/crypto/twofish_common.ko \
 	$(LINUX_DIR)/crypto/wp512.ko \
-    $(LINUX_DIR)/crypto/twofish_generic.ko
-  FILES += \
+	$(LINUX_DIR)/crypto/twofish_generic.ko \
 	$(LINUX_DIR)/crypto/blowfish_common.ko \
 	$(LINUX_DIR)/crypto/blowfish_generic.ko \
-    $(LINUX_DIR)/crypto/serpent_generic.ko
+	$(LINUX_DIR)/crypto/serpent_generic.ko
   $(call AddDepends/crypto)
 endef
 
