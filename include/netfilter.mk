@@ -153,15 +153,6 @@ $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_MATCH_RT, $(P_V6)ip6t_rt))
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_LOG, $(P_V6)ip6t_LOG))
 $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_REJECT, $(P_V6)ip6t_REJECT))
 
-# nat6 kernel 
-
-$(eval $(call nf_add,IPT_IPV6,CONFIG_NF_NAT_IPV6, $(P_V6)nf_nat_ipv6))
-$(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_NPT, $(P_V6)ip6t_NPT))
-$(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_MASQUERADE, $(P_V6)ip6t_MASQUERADE))
-
-# nat6 userspace
-$(eval $(if $(NF_KMOD),,$(call nf_add,NF_NAT_IPV6,CONFIG_NF_NAT_IPV6, ip6t_SNTP ip6t_DNPT)))
-
 # nat
 
 # kernel only

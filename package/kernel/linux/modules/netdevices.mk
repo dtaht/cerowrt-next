@@ -97,7 +97,7 @@ define KernelPackage/et131x
   KCONFIG:= \
 	CONFIG_ET131X \
 	CONFIG_ET131X_DEBUG=n
-  DEPENDS:=@PCI_SUPPORT
+  DEPENDS:=@PCI_SUPPORT +kmod-libphy
   AUTOLOAD:=$(call AutoLoad,70,et131x)
 endef
 
@@ -403,7 +403,7 @@ $(eval $(call KernelPackage,e1000))
 define KernelPackage/e1000e
   SUBMENU:=$(NETWORK_DEVICES_MENU)
   TITLE:=Intel(R) PRO/1000 PCIe cards kernel support
-  DEPENDS:=@PCIE_SUPPORT
+  DEPENDS:=@PCIE_SUPPORT +(!LINUX_3_3&&!LINUX_3_6&&!LINUX_3_7):kmod-ptp
   KCONFIG:=CONFIG_E1000E
   FILES:=$(LINUX_DIR)/drivers/net/ethernet/intel/e1000e/e1000e.ko
   AUTOLOAD:=$(call AutoLoad,50,e1000e)
@@ -578,14 +578,13 @@ define KernelPackage/tulip
     CONFIG_TULIP_MMIO=y \
     CONFIG_TULIP_NAPI=y \
     CONFIG_TULIP_NAPI_HW_MITIGATION=y \
-    CONFIG_DE4X5 \
+    CONFIG_DE4X5=n \
     CONFIG_WINBOND_840 \
     CONFIG_DM9102 \
     CONFIG_ULI526X
   FILES:= \
 	$(LINUX_DIR)/drivers/net/ethernet/dec/tulip/tulip.ko \
 	$(LINUX_DIR)/drivers/net/ethernet/dec/tulip/de2104x.ko \
-	$(LINUX_DIR)/drivers/net/ethernet/dec/tulip/de4x5.ko \
 	$(LINUX_DIR)/drivers/net/ethernet/dec/tulip/dmfe.ko \
 	$(LINUX_DIR)/drivers/net/ethernet/dec/tulip/uli526x.ko \
 	$(LINUX_DIR)/drivers/net/ethernet/dec/tulip/winbond-840.ko
