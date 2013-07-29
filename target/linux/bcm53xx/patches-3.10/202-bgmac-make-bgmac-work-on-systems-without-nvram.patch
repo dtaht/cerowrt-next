@@ -1,8 +1,4 @@
-From a0c7d2569ed39b8b0d90a431d80babc0f5f1f864 Mon Sep 17 00:00:00 2001
-From: Hauke Mehrtens <hauke@hauke-m.de>
-Date: Wed, 10 Jul 2013 17:55:34 +0200
-Subject: [PATCH 17/17] bgmac: make bgmac work on systems without nvram
-
+bgmac: make bgmac work on systems without nvram
 
 Signed-off-by: Hauke Mehrtens <hauke@hauke-m.de>
 ---
