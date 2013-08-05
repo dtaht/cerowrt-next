@@ -215,6 +215,42 @@ define BuildFirmware/dap1350/squashfs
 endef
 BuildFirmware/dap1350/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3))
 
+# Sign Poray images
+define BuildFirmware/Poray4M/squashfs
+	$(call BuildFirmware/Default4M/$(1),$(1),$(2),$(3))
+	if [ -e "$(call sysupname,$(1),$(2))" ]; then \
+		mkporayfw -B $(3) -F 4M \
+			-f $(call sysupname,$(1),$(2)) \
+			-o $(call imgname,$(1),$(2))-factory.bin; \
+	fi
+endef
+BuildFirmware/Poray4M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3))
+
+define BuildFirmware/Poray8M/squashfs
+	$(call BuildFirmware/Default8M/$(1),$(1),$(2),$(3))
+	if [ -e "$(call sysupname,$(1),$(2))" ]; then \
+		mkporayfw -B $(3) -F 8M \
+			-f $(call sysupname,$(1),$(2)) \
+			-o $(call imgname,$(1),$(2))-factory.bin; \
+	fi
+endef
+BuildFirmware/Poray8M/initramfs=$(call BuildFirmware/OF/initramfs,$(1),$(2),$(3))
+
+define BuildFirmware/PorayDualSize/squashfs
+	$(call BuildFirmware/DefaultDualSize/$(1),$(1),$(2),$(3))
+	if [ -e "$(call sysupname,$(1),$(2)-4M)" ]; then \
+		mkporayfw -B $(3) -F 4M \
+			-f $(call sysupname,$(1),$(2)-4M) \
+			-o $(call imgname,$(1),$(2))-4M-factory.bin; \
+	fi
+	if [ -e "$(call sysupname,$(1),$(2)-8M)" ]; then \
+		mkporayfw -B $(3) -F 8M \
+			-f $(call sysupname,$(1),$(2)-8M) \
+			-o $(call imgname,$(1),$(2))-8M-factory.bin; \
+	fi
+endef
+BuildFirmware/PorayDualSize/initramfs=$(call BuildFirmware/DefaultDualSize/initramfs,$(1),$(2),$(3))
+
 #
 # RT288X Profiles
 #
@@ -338,9 +374,16 @@ Image/Build/Profile/RT-N13U=$(call BuildFirmware/Default8M/$(1),$(1),rt-n13u,RT-
 
 Image/Build/Profile/FREESTATION5=$(call BuildFirmware/Default8M/$(1),$(1),freestation5,FREESTATION5)
 
+Image/Build/Profile/IP2202=$(call BuildFirmware/Default8M/$(1),$(1),ip2202,IP2202)
+
+Image/Build/Profile/M3=$(call BuildFirmware/Poray4M/$(1),$(1),m3,M3)
+
+Image/Build/Profile/M4=$(call BuildFirmware/PorayDualSize/$(1),$(1),m4,M4)
+
 Image/Build/Profile/MOFI3500-3GN=$(call BuildFirmware/Default8M/$(1),$(1),mofi3500-3gn,MOFI3500-3GN)
 
 # Kernel name should be "Linux Kernel Image" to make the OpenWrt image installable from factory Web UI
+Image/Build/Profile/MPRA1=$(call BuildFirmware/Default4M/$(1),$(1),mpr-a1,MPRA1,Linux Kernel Image)
 Image/Build/Profile/MPRA2=$(call BuildFirmware/Default8M/$(1),$(1),mpr-a2,MPRA2,Linux Kernel Image)
 
 Image/Build/Profile/NBG-419N=$(call BuildFirmware/Default4M/$(1),$(1),nbg-419n,NBG-419N)
@@ -436,6 +479,10 @@ Image/Build/Profile/UR-336UN=$(call BuildFirmware/Default8M/$(1),$(1),ur-336un,U
 
 Image/Build/Profile/WR6202=$(call BuildFirmware/Default8M/$(1),$(1),wr6202,WR6202)
 
+Image/Build/Profile/X5=$(call BuildFirmware/Poray8M/$(1),$(1),x5,X5)
+
+Image/Build/Profile/X8=$(call BuildFirmware/Poray8M/$(1),$(1),x8,X8)
+
 Image/Build/Profile/XDXRN502J=$(call BuildFirmware/Default4M/$(1),$(1),xdxrn502j,XDXRN502J)
 
 ifeq ($(SUBTARGET),rt305x)
@@ -471,6 +518,9 @@ define Image/Build/Profile/Default
 	$(call Image/Build/Profile/FREESTATION5,$(1))
 #	$(call Image/Build/Profile/HG255D,$(1))
 	$(call Image/Build/Profile/HW550-3G,$(1))
+	$(call Image/Build/Profile/IP2202,$(1))
+	$(call Image/Build/Profile/M3,$(1))
+	$(call Image/Build/Profile/M4,$(1))
 	$(call Image/Build/Profile/MOFI3500-3GN,$(1))
 	$(call Image/Build/Profile/MPRA2,$(1))
 	$(call Image/Build/Profile/MZKW300NH2,$(1))
@@ -497,6 +547,8 @@ define Image/Build/Profile/Default
 	$(call Image/Build/Profile/WNCE2001,$(1))
 	$(call Image/Build/Profile/WR512-3GN,$(1))
 	$(call Image/Build/Profile/WR6202,$(1))
+	$(call Image/Build/Profile/X5,$(1))
+	$(call Image/Build/Profile/X8,$(1))
 	$(call Image/Build/Profile/XDXRN502J,$(1))
 endef
 endif
@@ -532,10 +584,12 @@ endif
 #
 
 Image/Build/Profile/MT7620a=$(call BuildFirmware/Default8M/$(1),$(1),mt7620a,MT7620a)
+Image/Build/Profile/MT7620a_MT7610e=$(call BuildFirmware/Default8M/$(1),$(1),mt7620a_mt7610e,MT7620a_MT7610e)
 
 ifeq ($(SUBTARGET),mt7620a)
 define Image/Build/Profile/Default
 	$(call Image/Build/Profile/MT7620a,$(1))
+	$(call Image/Build/Profile/MT7620a_MT7610e,$(1))
 endef
 endif
 

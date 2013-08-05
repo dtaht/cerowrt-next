@@ -130,10 +130,15 @@ $(eval $(call KernelPackage,usb2-fsl))
 
 define KernelPackage/usb2
   TITLE:=Support for USB2 controllers
-  DEPENDS:=+TARGET_brcm47xx:kmod-usb-brcm47xx +TARGET_mpc85xx:kmod-usb2-fsl
-  KCONFIG:=CONFIG_USB_EHCI_HCD \
+  DEPENDS:=\
+	+TARGET_brcm47xx:kmod-usb-brcm47xx \
+	+TARGET_mpc85xx:kmod-usb2-fsl
+  KCONFIG:=\
+	CONFIG_USB_EHCI_HCD \
 	CONFIG_USB_EHCI_ATH79=y \
 	CONFIG_USB_EHCI_BCM63XX=y \
+	CONFIG_USB_IMX21_HCD=y \
+	CONFIG_USB_EHCI_MXC=y \
 	CONFIG_USB_OCTEON_EHCI=y \
 	CONFIG_USB_EHCI_HCD_ORION=y \
 	CONFIG_USB_EHCI_HCD_PLATFORM=y
@@ -1053,23 +1058,42 @@ $(eval $(call KernelPackage,usbip-server))
 
 define KernelPackage/usb-chipidea
   TITLE:=Support for ChipIdea controllers
-  DEPENDS:= +kmod-usb2
-  KCONFIG:= \
+  DEPENDS:=+kmod-usb2
+  KCONFIG:=\
 	CONFIG_USB_CHIPIDEA \
 	CONFIG_USB_CHIPIDEA_HOST=y \
 	CONFIG_USB_CHIPIDEA_UDC=n \
 	CONFIG_USB_CHIPIDEA_DEBUG=y
   FILES:=\
-	$(LINUX_DIR)/drivers/usb/chipidea/ci_hdrc.ko
-  AUTOLOAD:=$(call AutoLoad,51,ci_hdrc,1)
+	$(LINUX_DIR)/drivers/usb/chipidea/ci_hdrc.ko \
+	$(if $(CONFIG_OF_DEVICE),$(LINUX_DIR)/drivers/usb/chipidea/ci13xxx_imx.ko) \
+	$(if $(CONFIG_OF_DEVICE),$(LINUX_DIR)/drivers/usb/chipidea/usbmisc_imx$(if $(call kernel_patchver_le,3.9),6q).ko)
+  AUTOLOAD:=$(call AutoLoad,51,ci_hdrc $(if $(CONFIG_OF_DEVICE),ci13xxx_imx usbmisc_imx$(if $(call kernel_patchver_le,3.9),6q)),1)
   $(call AddDepends/usb)
 endef
-
+  
 define KernelPackage/usb-chipidea/description
  Kernel support for USB ChipIdea controllers
 endef
 
 $(eval $(call KernelPackage,usb-chipidea,1))
+
+
+define KernelPackage/usb-mxs-phy
+  TITLE:=Support for Freescale MXS USB PHY
+  DEPENDS:=@TARGET_imx6
+  KCONFIG:=CONFIG_USB_MXS_PHY
+  FILES:=\
+	$(LINUX_DIR)/drivers/usb/phy/phy-mxs-usb.ko
+  AUTOLOAD:=$(call AutoLoad,52,phy-mxs-usb,1)
+  $(call AddDepends/usb)
+endef
+
+define KernelPackage/usb-mxs-phy/description
+ Kernel support for Freescale MXS USB PHY
+endef
+
+$(eval $(call KernelPackage,usb-mxs-phy,1))
 
 
 define KernelPackage/usbmon

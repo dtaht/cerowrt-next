@@ -133,8 +133,10 @@ get_status_led() {
 		status_led="tp-link:green:system"
 		;;
 	archer-c7 | \
+	tl-mr10u | \
 	tl-wdr4300 | \
 	tl-wr703n | \
+	tl-wr710n | \
 	tl-wr720n-v3)
 		status_led="tp-link:blue:system"
 		;;
@@ -171,6 +173,9 @@ get_status_led() {
 		;;
 	wnr2000)
 		status_led="wnr2000:green:power"
+		;;
+	wnr612-v2)
+		status_led="wnr612v2:green:power"
 		;;
 	wp543)
 		status_led="wp543:green:diag"

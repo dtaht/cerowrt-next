@@ -91,6 +91,7 @@ enum {
 	E1000V1,
 	E3000V1,
 	E3200V1,
+	E4200V1,
 
 	/* ASUS */
 	WLHDD,
@@ -106,7 +107,9 @@ enum {
 	WL520GU,
 	ASUS_4702,
 	WL700GE,
+	RTN12,
 	RTN16,
+	RTN66U,
 
 	/* Buffalo */
 	WBR2_G54,
@@ -495,6 +498,16 @@ static struct platform_t __initdata platforms[] = {
 			{ .name = "power",	.gpio = 1 << 3, .polarity = REVERSE },	/* Power LED */
 		},
 	},
+	[E4200V1] = {
+		.name		= "Linksys E4200 V1",
+		.buttons	= {
+			{ .name = "reset",	.gpio = 1 << 6 },
+			{ .name = "wps",	.gpio = 1 << 4 },
+		},
+		.leds	= {
+			{ .name = "power",	.gpio = 1 << 5, .polarity = REVERSE },
+		},
+	},
 	/* Asus */
 	[WLHDD] = {
 		.name		= "ASUS WL-HDD",
@@ -634,6 +647,23 @@ static struct platform_t __initdata platforms[] = {
 		},
 		.platform_init = bcm4780_init,
 	},
+	[RTN12] = {
+		.name		= "ASUS RT-N12",
+		.buttons	= {
+			{ .name = "wps",	.gpio = 1 << 0 },
+			{ .name = "reset",	.gpio = 1 << 1 },
+			// this is the router/repeater/ap switch
+			{ .name = "sw1",	.gpio = 1 << 4 },
+			{ .name = "sw2",	.gpio = 1 << 5 },
+			{ .name = "sw3",	.gpio = 1 << 6 },
+		},
+		.leds		= {
+			{ .name = "power",	.gpio = 1 << 2, .polarity = REVERSE },
+			{ .name = "wlan",	.gpio = 1 << 7, .polarity = NORMAL },
+			// gpio3 forces WAN and LAN1-4 all on
+			//{ .name = "eth",	.gpio = 1 << 3, .polarity = REVERSE },
+		},
+	},
 	[RTN16] = {
 		.name		= "ASUS RT-N16",
 		.buttons	= {
@@ -643,6 +673,17 @@ static struct platform_t __initdata platforms[] = {
 		.leds		= {
 			{ .name = "power",	.gpio = 1 << 1, .polarity = REVERSE },
 			{ .name = "wlan",	.gpio = 1 << 7, .polarity = NORMAL },
+		},
+	},
+	[RTN66U] = {
+		.name		= "ASUS RT-N66U",
+		.buttons	= {
+			{ .name = "reset",	.gpio = 1 << 9 },
+			{ .name = "wps",	.gpio = 1 << 4 },
+		},
+		.leds		= {
+			{ .name = "power",	.gpio = 1 << 12, .polarity = REVERSE },
+			{ .name = "usb",	.gpio = 1 << 15, .polarity = REVERSE },
 		},
 	},
 	/* Buffalo */
@@ -1145,9 +1186,6 @@ static struct platform_t __init *platform_detect_legacy(void)
 			if (!strcmp(boardtype, "0x0101") && !strcmp(getvar("boot_ver"), "v3.6"))
 				return &platforms[WRT54G3G];
 
-			if (!strcmp(getvar("et1phyaddr"),"5") && !strcmp(getvar("et1mdcport"), "1"))
-				return &platforms[WRTSL54GS];
-
 			/* default to WRT54G */
 			return &platforms[WRT54G];
 		}
@@ -1161,15 +1199,6 @@ static struct platform_t __init *platform_detect_legacy(void)
 		if (!strcmp(boardnum, "44") || !strcmp(boardnum, "44\r")) {
 			if (!strcmp(boardtype,"0x0101") || !strcmp(boardtype, "0x0101\r"))
 				return &platforms[TM2300V2]; /* Dell TrueMobile 2300 v2 */
-		}
-
-		if (!strcmp(boardnum, "45")) { /* ASUS */
-			if (!strcmp(boardtype,"0x0472"))
-				return &platforms[WL500W];
-			else if (!strcmp(boardtype,"0x467"))
-				return &platforms[WL320GE];
-			else
-				return &platforms[WL500GD];
 		}
 
 		if (!strcmp(boardnum, "10496"))
@@ -1210,15 +1239,6 @@ static struct platform_t __init *platform_detect_legacy(void)
 				return &platforms[MN700];
 			else
 				return &platforms[WL500G];
-		}
-		if (startswith(getvar("hardware_version"), "WL300-")) {
-			/* Either WL-300g or WL-HDD, do more extensive checks */
-			if ((simple_strtoul(getvar("et0phyaddr"), NULL, 0) == 0) &&
-				(simple_strtoul(getvar("et1phyaddr"), NULL, 0) == 1))
-				return &platforms[WLHDD];
-			if ((simple_strtoul(getvar("et0phyaddr"), NULL, 0) == 0) &&
-				(simple_strtoul(getvar("et1phyaddr"), NULL, 0) == 10))
-				return &platforms[WL300G];
 		}
 		/* Sitecom WL-105b */
 		if (startswith(boardnum, "2") && simple_strtoul(getvar("GemtekPmonVer"), NULL, 0) == 1)
@@ -1285,20 +1305,34 @@ static struct platform_t __init *platform_detect(void)
 		printk(MODULE_NAME ": kernel found a \"%s\"\n", board_name);
 
 	switch(board) {
+	case BCM47XX_BOARD_ASUS_RTN12:
+		return &platforms[RTN12];
 	case BCM47XX_BOARD_ASUS_RTN16:
 		return &platforms[RTN16];
+	case BCM47XX_BOARD_ASUS_RTN66U:
+		return &platforms[RTN66U];
+	case BCM47XX_BOARD_ASUS_WL300G:
+		return &platforms[WL300G];
+	case BCM47XX_BOARD_ASUS_WL320GE:
+		return &platforms[WL320GE];
 	case BCM47XX_BOARD_ASUS_WL330GE:
 		return &platforms[WL330GE];
+	case BCM47XX_BOARD_ASUS_WL500GD:
+		return &platforms[WL500GD];
 	case BCM47XX_BOARD_ASUS_WL500GPV1:
 		return &platforms[WL500GP];
 	case BCM47XX_BOARD_ASUS_WL500GPV2:
 		return &platforms[WL500GPV2];
+	case BCM47XX_BOARD_ASUS_WL500W:
+		return &platforms[WL500W];
 	case BCM47XX_BOARD_ASUS_WL520GC:
 		return &platforms[WL520GC];
 	case BCM47XX_BOARD_ASUS_WL520GU:
 		return &platforms[WL520GU];
 	case BCM47XX_BOARD_ASUS_WL700GE:
 		return &platforms[WL700GE];
+	case BCM47XX_BOARD_ASUS_WLHDD:
+		return &platforms[WLHDD];
 	case BCM47XX_BOARD_BELKIN_F7D4301:
 		return &platforms[BELKIN_F7D4301];
 	case BCM47XX_BOARD_BUFFALO_WBR2_G54:
@@ -1331,6 +1365,8 @@ static struct platform_t __init *platform_detect(void)
 		return &platforms[E3000V1];
 	case BCM47XX_BOARD_LINKSYS_E3200V1:
 		return &platforms[E3200V1];
+	case BCM47XX_BOARD_LINKSYS_E4200V1:
+		return &platforms[E4200V1];
 	case BCM47XX_BOARD_LINKSYS_WRT150NV1:
 		return &platforms[WRT150NV1];
 	case BCM47XX_BOARD_LINKSYS_WRT150NV11:
@@ -1347,6 +1383,8 @@ static struct platform_t __init *platform_detect(void)
 		return &platforms[WRT610N];
 	case BCM47XX_BOARD_LINKSYS_WRT610NV2:
 		return &platforms[WRT610NV2];
+	case BCM47XX_BOARD_LINKSYS_WRTSL54GS:
+		return &platforms[WRTSL54GS];
 	case BCM47XX_BOARD_MOTOROLA_WE800G:
 		return &platforms[WE800G];
 	case BCM47XX_BOARD_MOTOROLA_WR850GP:
@@ -1378,13 +1416,20 @@ static inline void ssb_maskset32(struct ssb_device *dev,
 static void gpio_set_irqenable(int enabled, irqreturn_t (*handler)(int, void *))
 {
 	int irq;
+	int err;
 
 	irq = gpio_to_irq(0);
-	if (irq == -EINVAL) return;
+	if (irq < 0) {
+		pr_err("no irq for gpio available\n");
+		return;
+	}
 	
 	if (enabled) {
-		if (request_irq(irq, handler, IRQF_SHARED, "gpio", handler))
+		err = request_irq(irq, handler, IRQF_SHARED, "gpio", handler);
+		if (err) {
+			pr_err("can not reqeust irq\n");
 			return;
+		}
 	} else {
 		free_irq(irq, handler);
 	}

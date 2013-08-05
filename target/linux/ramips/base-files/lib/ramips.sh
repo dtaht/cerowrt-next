@@ -118,6 +118,9 @@ ramips_board_detect() {
 	*"MoFi Network MOFI3500-3GN")
 		name="mofi3500-3gn"
 		;;
+	*"HAME MPR-A1")
+ 		name="mpr-a1"
+ 		;;
 	*"HAME MPR-A2")
  		name="mpr-a2"
  		;;
@@ -144,6 +147,21 @@ ramips_board_detect() {
 		;;
 	*"Planex MZK-W300NH2"*)
 		name="mzk-w300nh2"
+		;;
+	*"Poray IP2202")
+		name="ip2202"
+		;;
+	*"Poray M3")
+		name="m3"
+		;;
+	*"Poray M4")
+		name="m4"
+		;;
+	*"Poray X5")
+		name="x5"
+		;;
+	*"Poray X8")
+		name="x8"
 		;;
 	*"PWH2004")
 		name="pwh2004"
