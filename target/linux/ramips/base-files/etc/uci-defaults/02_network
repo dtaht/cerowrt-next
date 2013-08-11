@@ -173,6 +173,7 @@ ramips_setup_macs()
 	broadway | \
 	dir-620-d1 | \
 	f5d8235-v1 | \
+	ip2202 | \
 	mpr-a1 | \
 	mpr-a2 | \
 	mzk-w300nh2 | \
@@ -224,6 +225,14 @@ ramips_setup_macs()
 	ur-336un)
 		lan_mac=$(mtd_get_mac_binary devdata 16388)
 		wan_mac=$(macaddr_add "$lan_mac" 1)
+		;;
+
+	m3 |\
+	m4 |\
+	x5 |\
+	x8)
+		lan_mac=$(mtd_get_mac_binary factory 4)
+		lan_mac=$(macaddr_add "$lan_mac" -1)
 		;;
 
 	nbg-419n | \

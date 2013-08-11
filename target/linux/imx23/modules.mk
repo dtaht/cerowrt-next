@@ -79,3 +79,54 @@ endef
 
 $(eval $(call KernelPackage,usb-net-smsc95xx))
 
+define KernelPackage/sound-soc-imx23
+    TITLE:=Freescale i.MX233 built-in SoC sound support
+    KCONFIG:= \
+	CONFIG_SND_SOC_MXS_BUILTIN_CODEC \
+	CONFIG_SND_MXS_SOC_BUILTIN
+    FILES:= \
+	$(LINUX_DIR)/sound/soc/mxs/snd-soc-mxs-builtin-audio.ko \
+	$(LINUX_DIR)/sound/soc/mxs/snd-soc-mxs-builtin-dai.ko \
+	$(LINUX_DIR)/sound/soc/mxs/snd-soc-mxs-builtin-pcm.ko \
+	$(LINUX_DIR)/sound/soc/codecs/snd-soc-mxs-builtin-codec.ko
+    AUTOLOAD:=$(call AutoLoad,65,snd-soc-mxs-builtin-pcm snd-soc-mxs-builtin-dai snd-soc-mxs-builtin-codec snd-soc-mxs-builtin-audio)
+    DEPENDS:=@TARGET_imx23 +kmod-sound-soc-core
+    $(call AddDepends/sound)
+endef
+  
+define KernelPackage/sound-soc-imx23/description
+    Kernel support for i.MX233 built-in SoC audio
+endef
+
+$(eval $(call KernelPackage,sound-soc-imx23))
+
+define KernelPackage/iio-mxs-lradc
+    SUBMENU:=$(OTHER_MENU)
+    TITLE:=LRADC driver for i.MX23/28
+    DEPENDS:=@TARGET_imx23
+    KCONFIG:=CONFIG_MXS_LRADC
+    FILES:=$(LINUX_DIR)/drivers/staging/iio/adc/mxs-lradc.ko \
+	$(LINUX_DIR)/drivers/iio/industrialio-triggered-buffer.ko
+    AUTOLOAD:=$(call AutoLoad,70,industrialio-triggered-buffer mxs-lradc)
+endef
+
+define KernelPackage/iio-mxs-lradc/description
+    Kernel module for i.MX23/28 LRADC driver
+endef
+
+$(eval $(call KernelPackage,iio-mxs-lradc))
+
+define KernelPackage/crypto-hw-dcp
+    TITLE:=i.MX23/28 DCP hardware crypto module
+    DEPENDS:=@TARGET_imx23
+    KCONFIG:=CONFIG_CRYPTO_DEV_DCP
+    FILES:=$(LINUX_DIR)/drivers/crypto/dcp.ko
+    AUTOLOAD:=$(call AutoLoad,90,dcp)
+    $(call AddDepends/crypto,+kmod-crypto-authenc +kmod-crypto-des)
+endef
+
+define KernelPackage/crypto-hw-dcp/description
+    Kernel support for the i.MX23/28 DCP crypto engine
+endef
+
+$(eval $(call KernelPackage,crypto-hw-dcp))

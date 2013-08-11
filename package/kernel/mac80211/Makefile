@@ -29,7 +29,9 @@ PKG_DRIVERS = \
 	rtl8180 rtl8187 zd1211rw mac80211-hwsim carl9170 b43 b43legacy \
 	ath9k-common ath9k ath9k-htc ath net-libipw net-ipw2100 net-ipw2200 \
 	mwl8k net-hermes net-hermes-pci net-hermes-plx net-hermes-pcmcia \
-	iwl-legacy iwl3945 iwl4965 iwlagn wl12xx lib80211
+	iwl-legacy iwl3945 iwl4965 iwlagn wl12xx lib80211 \
+	rtlwifi rtlwifi-pci rtlwifi-usb rtl8192c-common rtl8192ce rtl8192se \
+	rtl8192de rtl8192cu
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_kmod-mac80211 \
@@ -40,6 +42,7 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_B43_DEBUG \
 	CONFIG_PACKAGE_B43_PIO \
 	CONFIG_PACKAGE_B43_N_PHY \
+	CONFIG_PACKAGE_RTLWIFI_DEBUG \
 	CONFIG_ATH_USER_REGD \
 
 CARL9170_FW_VERSION:=1.9.6
@@ -256,7 +259,7 @@ endef
 
 define KernelPackage/rt2x00-soc
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @TARGET_ramips @!TARGET_ramips_mt7620a @!TARGET_ramips_rt3883 +kmod-rt2x00-mmio +kmod-rt2x00-lib
+  DEPENDS+=@TARGET_ramips_rt305x +kmod-rt2x00-mmio +kmod-rt2x00-lib
   TITLE+= (SoC)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2x00soc.ko
   AUTOLOAD:=$(call AutoLoad,26,rt2x00soc)
@@ -264,7 +267,7 @@ endef
 
 define KernelPackage/rt2800-lib
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib +kmod-lib-crc-ccitt +TARGET_ramips:kmod-rt2x00-soc +@DRIVER_11N_SUPPORT
+  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib +kmod-lib-crc-ccitt +@DRIVER_11N_SUPPORT
   TITLE+= (rt2800 LIB)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2800lib.ko
   AUTOLOAD:=$(call AutoLoad,27,rt2800lib)
@@ -312,7 +315,7 @@ endef
 
 define KernelPackage/rt2800-pci
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @(PCI_SUPPORT||TARGET_ramips) +PCI_SUPPORT:kmod-rt2x00-pci +kmod-rt2800-lib +kmod-lib-crc-ccitt +TARGET_ramips:kmod-rt2x00-soc
+  DEPENDS+= @(PCI_SUPPORT||TARGET_ramips_rt305x) +PCI_SUPPORT:kmod-rt2x00-pci +kmod-rt2800-lib +kmod-lib-crc-ccitt +TARGET_ramips_rt305x:kmod-rt2x00-soc
   TITLE+= (RT2860 PCI)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rt2x00/rt2800pci.ko
   AUTOLOAD:=$(call AutoLoad,28,rt2800pci)
@@ -347,6 +350,106 @@ $(call KernelPackage/rtl818x/Default)
   TITLE+= (RTL8187 USB)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtl818x/rtl8187/rtl8187.ko
   AUTOLOAD:=$(call AutoLoad,27,rtl8187)
+endef
+
+define KernelPackage/rtlwifi/config
+	menu "Configuration"
+		depends on PACKAGE_kmod-rtlwifi
+
+	config PACKAGE_RTLWIFI_DEBUG
+		bool "Realtek wireless debugging"
+		help
+		  Say Y, if you want to debug realtek wireless drivers.
+
+	endmenu
+endef
+
+define KernelPackage/rtlwifi
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek common driver part
+  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT) +kmod-mac80211 +@DRIVER_11N_SUPPORT
+  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtlwifi.ko
+  AUTOLOAD:=$(call AutoLoad,26,rtlwifi)
+  MENU:=1
+endef
+
+define KernelPackage/rtlwifi-pci
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek common driver part (PCI support)
+  DEPENDS+= @PCI_SUPPORT +kmod-rtlwifi
+  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl_pci.ko
+  AUTOLOAD:=$(call AutoLoad,27,rtl_pci)
+  HIDDEN:=1
+endef
+
+define KernelPackage/rtlwifi-usb
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek common driver part (USB support)
+  DEPENDS+= @USB_SUPPORT +kmod-usb-core +kmod-rtlwifi
+  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl_usb.ko
+  AUTOLOAD:=$(call AutoLoad,27,rtl_usb)
+  HIDDEN:=1
+endef
+
+define KernelPackage/rtl8192c-common
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek RTL8192CE/RTL8192CU common support module
+  DEPENDS+= +kmod-rtlwifi
+  FILES:= $(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl8192c/rtl8192c-common.ko
+  AUTOLOAD:=$(call AutoLoad,27,rtl8192c-common)
+  HIDDEN:=1
+endef
+
+define KernelPackage/rtl8192ce
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek RTL8192CE/RTL8188CE support
+  DEPENDS+= +kmod-rtlwifi-pci +kmod-rtl8192c-common
+  FILES:= $(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl8192ce/rtl8192ce.ko
+  AUTOLOAD:=$(call AutoLoad,28,rtl8192ce)
+endef
+
+define KernelPackage/rtl8192ce/install
+	$(INSTALL_DIR) $(1)/lib/firmware/rtlwifi
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/rtlwifi/rtl8192cfw.bin $(1)/lib/firmware/rtlwifi
+endef
+
+define KernelPackage/rtl8192se
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek RTL8192SE/RTL8191SE support
+  DEPENDS+= +kmod-rtlwifi-pci
+  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl8192se/rtl8192se.ko
+  AUTOLOAD:=$(call AutoLoad,28,rtl8192se)
+endef
+
+define KernelPackage/rtl8192se/install
+	$(INSTALL_DIR) $(1)/lib/firmware/rtlwifi
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/rtlwifi/rtl8192sefw.bin $(1)/lib/firmware/rtlwifi
+endef
+
+define KernelPackage/rtl8192de
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek RTL8192DE/RTL8188DE support
+  DEPENDS+= +kmod-rtlwifi-pci
+  FILES:= $(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl8192de/rtl8192de.ko
+  AUTOLOAD:=$(call AutoLoad,28,rtl8192de)
+endef
+
+define KernelPackage/rtl8192de/install
+	$(INSTALL_DIR) $(1)/lib/firmware/rtlwifi
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/rtlwifi/rtl8192defw.bin $(1)/lib/firmware/rtlwifi
+endef
+
+define KernelPackage/rtl8192cu
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Realtek RTL8192CU/RTL8188CU support
+  DEPENDS+= +kmod-rtlwifi-usb +kmod-rtl8192c-common
+  FILES:= $(PKG_BUILD_DIR)/drivers/net/wireless/rtlwifi/rtl8192cu/rtl8192cu.ko
+  AUTOLOAD:=$(call AutoLoad,28,rtl8192cu)
+endef
+
+define KernelPackage/rtl8192cu/install
+	$(INSTALL_DIR) $(1)/lib/firmware/rtlwifi
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/$(PKG_LINUX_FIRMWARE_SUBDIR)/rtlwifi/rtl8192cufw.bin $(1)/lib/firmware/rtlwifi
 endef
 
 ZD1211FW_NAME:=zd1211-firmware
@@ -1253,10 +1356,12 @@ config-$(call config_package,rt61-pci) += RT61PCI
 config-$(call config_package,rt73-usb) += RT73USB
 
 config-$(call config_package,rt2800-lib) += RT2800_LIB
-config-y += RT2800PCI_RT33XX RT2800PCI_RT35XX RT2800PCI_RT53XX RT2800PCI_RT3290
 
 config-$(call config_package,rt2800-pci) += RT2800PCI
+config-y += RT2800PCI_RT33XX RT2800PCI_RT35XX RT2800PCI_RT53XX RT2800PCI_RT3290
+
 config-$(call config_package,rt2800-usb) += RT2800USB
+config-y += RT2800USB_RT33XX RT2800USB_RT35XX RT2800USB_RT53XX RT2800USB_RT55XX
 
 config-$(call config_package,iwl-legacy) += IWLEGACY
 config-$(call config_package,iwl3945) += IWL3945
@@ -1286,6 +1391,16 @@ config-$(call config_package,rtl8180) += RTL8180
 config-$(call config_package,rtl8187) += RTL8187
 config-$(call config_package,wl12xx) += WL_TI WLCORE WLCORE_SDIO WL12XX
 config-$(call config_package,zd1211rw) += ZD1211RW
+
+config-$(call config_package,rtlwifi) += RTL_CARDS RTLWIFI
+config-$(call config_package,rtlwifi-pci) += RTLWIFI_PCI
+config-$(call config_package,rtlwifi-usb) += RTLWIFI_USB
+config-$(call config_package,rtl8192c-common) += RTL8192C_COMMON
+config-$(call config_package,rtl8192ce) += RTL8192CE
+config-$(call config_package,rtl8192se) += RTL8192SE
+config-$(call config_package,rtl8192de) += RTL8192DE
+config-$(call config_package,rtl8192cu) += RTL8192CU
+config-$(CONFIG_PACKAGE_RTLWIFI_DEBUG) += RTLWIFI_DEBUG
 
 config-$(CONFIG_LEDS_TRIGGERS) += MAC80211_LEDS B43_LEDS B43LEGACY_LEDS
 
@@ -1608,6 +1723,14 @@ $(eval $(call KernelPackage,rt2800-pci))
 $(eval $(call KernelPackage,rt2800-usb))
 $(eval $(call KernelPackage,rtl8180))
 $(eval $(call KernelPackage,rtl8187))
+$(eval $(call KernelPackage,rtlwifi))
+$(eval $(call KernelPackage,rtlwifi-pci))
+$(eval $(call KernelPackage,rtlwifi-usb))
+$(eval $(call KernelPackage,rtl8192c-common))
+$(eval $(call KernelPackage,rtl8192ce))
+$(eval $(call KernelPackage,rtl8192se))
+$(eval $(call KernelPackage,rtl8192de))
+$(eval $(call KernelPackage,rtl8192cu))
 $(eval $(call KernelPackage,zd1211rw))
 $(eval $(call KernelPackage,mac80211-hwsim))
 $(eval $(call KernelPackage,ath9k-common))

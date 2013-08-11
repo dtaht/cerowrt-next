@@ -45,12 +45,21 @@ get_status_led() {
 	fonera20n)
 		status_led="fonera20n:green:power"
 		;;
+	ip2202)
+		status_led="ip2202:green:run"
+		;;
 	rt-n13u)
 		status_led="rt-n13u:power"
 		;;
 	all0239-3g|\
 	hw550-3g)
 		status_led="hw550-3g:green:status"
+		;;
+	m3)
+		status_led="m3:blue:status"
+		;;
+	m4)
+		status_led="m4:blue:status"
 		;;
 	mofi3500-3gn)
 		status_led="mofi3500-3gn:green:status"
@@ -131,6 +140,12 @@ get_status_led() {
 		;;
 	ur-336un)
 		status_led="ur336:green:wps"
+		;;
+	x5)
+		status_led="x5:green:power"
+		;;
+	x8)
+		status_led="x8:green:power"
 		;;
 	xdxrn502j)
 		status_led="xdxrn502j:green:power"
