@@ -1,0 +1,30 @@
+From 47b594d0643ca6247062dc7f20cb00b09ef4e260 Mon Sep 17 00:00:00 2001
+From: Dave Taht <dave.taht@bufferbloat.net>
+Date: Mon, 12 Aug 2013 12:26:09 -0700
+Subject: [PATCH] Codel: eliminate maxpacket as an inner bound
+
+As there is ALWAYS at least one packet in the device driver or
+rate limiter, this bound (from the ns2 code) is unneeded.
+
+Also in the case of TSO/GSO/GRO, it eventually scales well above
+(64k) what codel's designers intended.
+---
+ include/net/codel.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/net/codel.h b/include/net/codel.h
+index 389cf62..319a296 100644
+--- a/include/net/codel.h
++++ b/include/net/codel.h
+@@ -225,7 +225,7 @@ static bool codel_should_drop(const struct sk_buff *skb,
+ 		stats->maxpacket = qdisc_pkt_len(skb);
+ 
+ 	if (codel_time_before(vars->ldelay, params->target) ||
+-	    sch->qstats.backlog <= stats->maxpacket) {
++	    sch->qstats.backlog <= 0) {
+ 		/* went below - stay below for at least interval */
+ 		vars->first_above_time = 0;
+ 		return false;
+-- 
+1.7.9.5
+
