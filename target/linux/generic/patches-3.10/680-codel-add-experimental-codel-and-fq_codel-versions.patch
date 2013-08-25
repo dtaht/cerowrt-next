@@ -1,25 +1,18 @@
-From a0f42b39127afa5f566d4a64b726fbe84ed81438 Mon Sep 17 00:00:00 2001
-From: =?UTF-8?q?Dave=20T=C3=A4ht?= <dave.taht@bufferbloat.net>
-Date: Mon, 17 Sep 2012 18:00:08 -0700
-Subject: [PATCH 1/7] codel: add experimental codel and fq_codel versions
+From d16e421bd16727971951dda5a7a075530b98cbb2 Mon Sep 17 00:00:00 2001
+From: Dave Taht <dave.taht@bufferbloat.net>
+Date: Mon, 12 Aug 2013 12:38:56 -0700
+Subject: [PATCH 3/3] Add support for advanced codel and fq_codel versions
 
-This adds:
-
-codel2    - an implementation of codel.h based on the ns2 model
-nfq_codel - an implementation of fq_codel based on the ns2 model
-codel3    - an implementation of codel2.h removing single fifo assumptions
-efq_codel - mildly altered nfq_codel with some different assumptions
-
-And build support for each.
+This moves forward the fix for not testing maxpacket.
 ---
- include/net/codel2.h      |  355 +++++++++++++++++++++++++
- include/net/codel3.h      |  381 +++++++++++++++++++++++++++
+ include/net/codel2.h      |  354 +++++++++++++++++++++++++
+ include/net/codel3.h      |  380 +++++++++++++++++++++++++++
  net/sched/Kconfig         |   35 +++
  net/sched/Makefile        |    3 +
  net/sched/sch_efq_codel.c |  641 +++++++++++++++++++++++++++++++++++++++++++++
- net/sched/sch_nfq_codel.c |  627 ++++++++++++++++++++++++++++++++++++++++++++
+ net/sched/sch_nfq_codel.c |  633 ++++++++++++++++++++++++++++++++++++++++++++
  net/sched/sch_ns2_codel.c |  276 +++++++++++++++++++
- 7 files changed, 2318 insertions(+)
+ 7 files changed, 2322 insertions(+)
  create mode 100644 include/net/codel2.h
  create mode 100644 include/net/codel3.h
  create mode 100644 net/sched/sch_efq_codel.c
@@ -28,10 +21,10 @@ And build support for each.
 
 diff --git a/include/net/codel2.h b/include/net/codel2.h
 new file mode 100644
-index 0000000..21cc725
+index 0000000..4119111
 --- /dev/null
 +++ b/include/net/codel2.h
-@@ -0,0 +1,355 @@
+@@ -0,0 +1,354 @@
 +#ifndef __NET_SCHED_CODEL_H
 +#define __NET_SCHED_CODEL_H
 +
@@ -260,7 +253,7 @@ index 0000000..21cc725
 +		stats->maxpacket = qdisc_pkt_len(skb);
 +
 +	if (codel_time_before(vars->ldelay, params->target) ||
-+	    sch->qstats.backlog <= stats->maxpacket) {
++	    sch->qstats.backlog <= 0) {
 +		/* went below - stay below for at least interval */
 +		vars->first_above_time = 0;
 +		return false;
@@ -374,7 +367,6 @@ index 0000000..21cc725
 +			 */
 +			codel_Newton_step(vars);
 +		} else {
-+			stats->maxpacket = 0;
 +			vars->count = 1;
 +			vars->rec_inv_sqrt = ~0U >> REC_INV_SQRT_SHIFT;
 +		}
@@ -389,10 +381,10 @@ index 0000000..21cc725
 +#endif
 diff --git a/include/net/codel3.h b/include/net/codel3.h
 new file mode 100644
-index 0000000..cb464ef
+index 0000000..9d8caf3
 --- /dev/null
 +++ b/include/net/codel3.h
-@@ -0,0 +1,381 @@
+@@ -0,0 +1,380 @@
 +#ifndef __NET_SCHED_CODEL_H
 +#define __NET_SCHED_CODEL_H
 +
@@ -622,7 +614,7 @@ index 0000000..cb464ef
 +		vars->maxpacket = qdisc_pkt_len(skb);
 +
 +	if (codel_time_before(vars->ldelay, params->target) ||
-+	    sch->qstats.backlog <= vars->maxpacket) {
++	    sch->qstats.backlog <= 0) {
 +		/* went below - stay below for at least interval */
 +		vars->first_above_time = 0;
 +		return false;
@@ -761,7 +753,6 @@ index 0000000..cb464ef
 +			 */
 +			codel_Newton_step(vars);
 +		} else {
-+			vars->maxpacket = 64;
 +			vars->count = 1;
 +			vars->rec_inv_sqrt = ~0U >> REC_INV_SQRT_SHIFT;
 +		}
@@ -775,10 +766,10 @@ index 0000000..cb464ef
 +}
 +#endif
 diff --git a/net/sched/Kconfig b/net/sched/Kconfig
-index 62fb51f..5f79caa 100644
+index 14c1376..8fdcd98 100644
 --- a/net/sched/Kconfig
 +++ b/net/sched/Kconfig
-@@ -261,6 +261,17 @@ config NET_SCH_CODEL
+@@ -272,6 +272,17 @@ config NET_SCH_CODEL
  
  	  If unsure, say N.
  
@@ -796,7 +787,7 @@ index 62fb51f..5f79caa 100644
  config NET_SCH_FQ_CODEL
  	tristate "Fair Queue Controlled Delay AQM (FQ_CODEL)"
  	help
-@@ -272,6 +283,30 @@ config NET_SCH_FQ_CODEL
+@@ -283,6 +294,30 @@ config NET_SCH_FQ_CODEL
  
  	  If unsure, say N.
  
@@ -828,11 +819,11 @@ index 62fb51f..5f79caa 100644
  	tristate "Ingress Qdisc"
  	depends on NET_CLS_ACT
 diff --git a/net/sched/Makefile b/net/sched/Makefile
-index 978cbf0..d47472a 100644
+index be0cab8..8144035 100644
 --- a/net/sched/Makefile
 +++ b/net/sched/Makefile
-@@ -39,6 +39,9 @@ obj-$(CONFIG_NET_SCH_CHOKE)	+= sch_choke.o
- obj-$(CONFIG_NET_SCH_QFQ)	+= sch_qfq.o
+@@ -40,6 +40,9 @@ obj-$(CONFIG_NET_SCH_QFQ)	+= sch_qfq.o
+ obj-$(CONFIG_NET_SCH_PIE)	+= sch_pie.o
  obj-$(CONFIG_NET_SCH_CODEL)	+= sch_codel.o
  obj-$(CONFIG_NET_SCH_FQ_CODEL)	+= sch_fq_codel.o
 +obj-$(CONFIG_NET_SCH_NFQ_CODEL)	+= sch_nfq_codel.o
@@ -843,7 +834,7 @@ index 978cbf0..d47472a 100644
  obj-$(CONFIG_NET_CLS_ROUTE4)	+= cls_route.o
 diff --git a/net/sched/sch_efq_codel.c b/net/sched/sch_efq_codel.c
 new file mode 100644
-index 0000000..333beb6
+index 0000000..ceb2c03
 --- /dev/null
 +++ b/net/sched/sch_efq_codel.c
 @@ -0,0 +1,641 @@
@@ -1490,10 +1481,10 @@ index 0000000..333beb6
 +MODULE_LICENSE("GPL");
 diff --git a/net/sched/sch_nfq_codel.c b/net/sched/sch_nfq_codel.c
 new file mode 100644
-index 0000000..dcee875
+index 0000000..d3d78c2
 --- /dev/null
 +++ b/net/sched/sch_nfq_codel.c
-@@ -0,0 +1,632 @@
+@@ -0,0 +1,633 @@
 +/*
 + * Fair Queue CoDel discipline
 + *
@@ -1888,9 +1879,9 @@ index 0000000..dcee875
 +	struct fq_codel_sched_data *q = qdisc_priv(sch);
 +	int i;
 +
-+	sch->limit = 10*1024;
++	sch->limit = 1024;
 +	q->flows_cnt = 1024;
-+	q->quantum = psched_mtu(qdisc_dev(sch));
++	q->quantum = 300;
 +	q->perturbation = net_random();
 +	INIT_LIST_HEAD(&q->new_flows);
 +	INIT_LIST_HEAD(&q->old_flows);
@@ -2126,6 +2117,7 @@ index 0000000..dcee875
 +module_init(fq_codel_module_init)
 +module_exit(fq_codel_module_exit)
 +MODULE_AUTHOR("Eric Dumazet");
++MODULE_LICENSE("GPL");
 diff --git a/net/sched/sch_ns2_codel.c b/net/sched/sch_ns2_codel.c
 new file mode 100644
 index 0000000..c8d930d
