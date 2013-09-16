@@ -83,12 +83,15 @@ enum {
 	WRT160NV1,
 	WRT160NV3,
 	WRT300NV11,
+	WRT310NV1,
 	WRT350N,
 	WRT600N,
 	WRT600NV11,
 	WRT610N,
 	WRT610NV2,
 	E1000V1,
+	E1000V21,
+	E2000V1,
 	E3000V1,
 	E3200V1,
 	E4200V1,
@@ -180,6 +183,9 @@ enum {
 
 	/* Edimax */
 	PS1208MFG,
+
+	/* Huawei */
+	HUAWEI_E970,
 };
 
 static void __init bcm4780_init(void) {
@@ -378,6 +384,18 @@ static struct platform_t __initdata platforms[] = {
 		},
 		.platform_init = bcm57xx_init,
 	},
+	[WRT310NV1] = {
+		.name		= "Linksys WRT310N V1",
+		.buttons	= {
+			{ .name = "reset",	.gpio = 1 << 6 }, // "Reset" on back panel
+			{ .name = "ses",	.gpio = 1 << 8 }, // "Reserved" on top panel
+		},
+		.leds		= {
+			{ .name = "power",	.gpio = 1 << 1, .polarity = NORMAL }, // Power LED
+			{ .name = "ses_amber",	.gpio = 1 << 3, .polarity = REVERSE }, // "Security" Amber
+			{ .name = "ses_blue",	.gpio = 1 << 9, .polarity = REVERSE }, // "Security" Blue
+		},
+	},
 	[WRT350N] = {
 		.name		= "Linksys WRT350N",
 		.buttons	= {
@@ -469,6 +487,32 @@ static struct platform_t __initdata platforms[] = {
 			{ .name = "power",      .gpio = 1 << 1, .polarity = NORMAL },
 			{ .name = "ses_blue",   .gpio = 1 << 4, .polarity = REVERSE }, /* nvram get gpio4=wps_led */
 			{ .name = "ses_orange", .gpio = 1 << 2, .polarity = REVERSE }, /* nvram get gpio2=wps_status_led */
+		},
+	},
+	[E1000V21] = {
+		.name		= "Linksys E1000 V2.1",
+		.buttons	= {
+			{ .name = "reset",	.gpio = 1 << 10 }, /* nvram get reset_gpio=10 */
+			{ .name = "wps",	.gpio = 1 << 9 }, /* nvram get gpio9=wps_button */
+		},
+		.leds		= {
+			{ .name = "power",      .gpio = 1 << 6, .polarity = REVERSE },
+			{ .name = "wlan",       .gpio = 1 << 5, .polarity = NORMAL },
+			{ .name = "ses_blue",	.gpio = 1 << 8, .polarity = NORMAL }, /* nvram get gpio8=wps_led */
+			{ .name = "ses_orange",	.gpio = 1 << 7, .polarity = NORMAL }, /* nvram get gpio7=wps_status_led */
+		},
+	},
+	[E2000V1] = {
+		.name		= "Linksys E2000 V1",
+		.buttons	= {
+			{ .name = "reset",	.gpio = 1 << 8 },
+			{ .name = "ses",	.gpio = 1 << 5 },
+		},
+		.leds		= {
+			{ .name = "power",	.gpio = 1 << 2, .polarity = NORMAL },
+			{ .name = "ses_amber",	.gpio = 1 << 4, .polarity = REVERSE },
+			{ .name = "ses_blue",	.gpio = 1 << 3, .polarity = REVERSE },
+			{ .name = "wlan",	.gpio = 1 << 1, .polarity = NORMAL },
 		},
 	},
 	[E3000V1] = {
@@ -1145,6 +1189,16 @@ static struct platform_t __initdata platforms[] = {
 			{ .name = "wlan",	.gpio = 1 << 0, .polarity = NORMAL },
 		},
 	},
+	/* Huawei */
+	[HUAWEI_E970] = {
+		.name	 	= "Huawei E970",
+		.buttons 	= {
+			{ .name = "reset",	.gpio = 1 << 6 },
+		},
+		.leds		= {
+			{ .name = "wlan",	.gpio = 1 << 0, .polarity = NORMAL },
+		},
+	},
 };
 
 static struct platform_t __init *platform_detect_legacy(void)
@@ -1176,8 +1230,9 @@ static struct platform_t __init *platform_detect_legacy(void)
 			if (!strcmp(boardtype, "0x0101") && !strcmp(getvar("boot_ver"), "v3.6"))
 				return &platforms[WRT54G3G];
 
-			/* default to WRT54G */
-			return &platforms[WRT54G];
+			/* default to WRT54G if no boot_hw_model is set */
+			if (nvram_get("boot_hw_model") == NULL)
+				return &platforms[WRT54G];
 		}
 		if (!strcmp(boardnum, "1024") && !strcmp(boardtype, "0x0446"))
 			return &platforms[WAP54GV2];
@@ -1347,8 +1402,14 @@ static struct platform_t __init *platform_detect(void)
 		return &platforms[DIR130];
 	case BCM47XX_BOARD_DLINK_DIR330:
 		return &platforms[DIR330];
+	case BCM47XX_BOARD_HUAWEI_E970:
+		return &platforms[HUAWEI_E970];
 	case BCM47XX_BOARD_LINKSYS_E1000V1:
 		return &platforms[E1000V1];
+	case BCM47XX_BOARD_LINKSYS_E1000V21:
+		return &platforms[E1000V21];
+	case BCM47XX_BOARD_LINKSYS_E2000V1:
+		return &platforms[E2000V1];
 	case BCM47XX_BOARD_LINKSYS_E3000V1:
 		return &platforms[E3000V1];
 	case BCM47XX_BOARD_LINKSYS_E3200V1:
@@ -1365,6 +1426,8 @@ static struct platform_t __init *platform_detect(void)
 		return &platforms[WRT160NV3];
 	case BCM47XX_BOARD_LINKSYS_WRT300NV11:
 		return &platforms[WRT300NV11];
+	case BCM47XX_BOARD_LINKSYS_WRT310NV1:
+		return &platforms[WRT310NV1];
 	case BCM47XX_BOARD_LINKSYS_WRT54G3GV2:
 		return &platforms[WRT54G3GV2_VF];
 	case BCM47XX_BOARD_LINKSYS_WRT610NV1:
