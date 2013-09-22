@@ -169,6 +169,7 @@ tl-wr941nd)
 tl-mr3420-v2 |\
 tl-wr841n-v8 |\
 wnr2000-v3 |\
+wnr2200 |\
 wnr612-v2)
 	ucidef_set_interfaces_lan_wan "eth1" "eth0"
 	ucidef_add_switch "switch0" "1" "1"
@@ -193,7 +194,16 @@ wzr-hp-g300nh)
 	ucidef_add_switch_vlan "switch0" "1" "0 1 2 3 5t"
 	;;
 
-dir-825-c1 |\
+dir-825-c1)
+	local mac
+	ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
+	ucidef_add_switch "switch0" "1" "1"
+	ucidef_add_switch_vlan "switch0" "1" "0t 1 2 3 4"
+	ucidef_add_switch_vlan "switch0" "2" "0t 5"
+	mac=$(mtd_get_mac_ascii nvram "^wan_mac")
+	[ -n "$mac" ] && ucidef_set_interface_macaddr "wan" "$mac"
+	;;
+
 dir-835-a1 |\
 wndr4300)
 	ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
@@ -212,6 +222,7 @@ mr600v2 |\
 rb-411 |\
 tl-mr10u |\
 tl-mr11u |\
+tl-mr13u |\
 tl-mr3020 |\
 tl-mr3040 |\
 tl-wa901nd |\
@@ -247,6 +258,7 @@ dir-600-a1 |\
 dir-615-c1 |\
 dir-615-e4 |\
 ja76pf |\
+mynet-n600 |\
 rb-750 |\
 rb-751 |\
 tew-632brp |\
