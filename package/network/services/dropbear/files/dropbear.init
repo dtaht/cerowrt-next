@@ -6,9 +6,8 @@ START=50
 STOP=50
 
 USE_PROCD=1
-
-NAME=dropbear
 PROG=/usr/sbin/dropbear
+NAME=dropbear
 PIDCOUNT=0
 EXTRA_COMMANDS="killclients"
 EXTRA_HELP="	killclients Kill ${NAME} processes except servers and yourself"
@@ -123,7 +122,7 @@ start_service()
 
 service_triggers()
 {
-	procd_add_config_trigger "dropbear" "/etc/init.d/dropbear" "restart"
+	procd_add_reload_trigger "dropbear"
 }
 
 killclients()

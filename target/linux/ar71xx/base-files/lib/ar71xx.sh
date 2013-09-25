@@ -141,6 +141,9 @@ tplink_board_detect() {
 	"001101"*)
 		model="TP-Link TL-MR11U"
 		;;
+	"001301"*)
+		model="TP-Link TL-MR13U"
+		;;
 	"302000"*)
 		model="TP-Link TL-MR3020"
 		;;
@@ -300,6 +303,9 @@ ar71xx_board_detect() {
 	*MR600)
 		name="mr600"
 		;;
+	*"My Net N600")
+		name="mynet-n600"
+		;;
 	*MZK-W04NU)
 		name="mzk-w04nu"
 		;;
@@ -399,6 +405,9 @@ ar71xx_board_detect() {
 	*TEW-712BR)
 		name="tew-712br"
 		;;
+	*TEW-732BR)
+		name="tew-732br"
+		;;
 	*"TL-WR1041N v2")
 		name="tl-wr1041n-v2"
 		;;
@@ -416,6 +425,9 @@ ar71xx_board_detect() {
 		;;
 	*TL-MR3040)
 		name="tl-mr3040"
+		;;
+	*"TL-MR3040 v2")
+		name="tl-mr3040-v2"
 		;;
 	*TL-MR3220)
 		name="tl-mr3220"
@@ -477,6 +489,9 @@ ar71xx_board_detect() {
 	*"TL-MR11U")
 		name="tl-mr11u"
 		;;
+	*"TL-MR13U")
+		name="tl-mr13u"
+		;;
 	*UniFi)
 		name="unifi"
 		;;
@@ -515,6 +530,9 @@ ar71xx_board_detect() {
 		;;
 	*WNR2000)
 		name="wnr2000"
+		;;
+	*WNR2200)
+		name="wnr2200"
 		;;
 	*"WNR612 V2")
 		name="wnr612-v2"
