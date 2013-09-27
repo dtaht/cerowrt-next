@@ -13,9 +13,9 @@ Signed-off-by: Florian Fainelli <florian@openwrt.org>
 
 --- a/arch/arm/boot/dts/armada-370-rd.dts
 +++ b/arch/arm/boot/dts/armada-370-rd.dts
-@@ -57,5 +57,11 @@
- 			phy = <&phy1>;
- 			phy-mode = "rgmii-id";
+@@ -85,5 +85,11 @@
+ 				};
+ 			};
  		};
 +
 +		mvsdio@d00d4000 {
@@ -24,4 +24,4 @@ Signed-off-by: Florian Fainelli <florian@openwrt.org>
 +			status = "okay";
 +		};
  	};
- };
+  };
