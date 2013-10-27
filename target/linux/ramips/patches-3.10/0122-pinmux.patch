@@ -14,10 +14,10 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
  6 files changed, 385 insertions(+), 19 deletions(-)
  create mode 100644 drivers/pinctrl/pinctrl-rt2880.c
 
-Index: linux-3.10.13/arch/mips/Kconfig
+Index: linux-3.10.17/arch/mips/Kconfig
 ===================================================================
---- linux-3.10.13.orig/arch/mips/Kconfig	2013-10-02 16:59:28.532051276 +0200
-+++ linux-3.10.13/arch/mips/Kconfig	2013-10-02 16:59:29.440051316 +0200
+--- linux-3.10.17.orig/arch/mips/Kconfig	2013-10-24 16:17:14.040072202 +0200
++++ linux-3.10.17/arch/mips/Kconfig	2013-10-24 16:17:14.964072221 +0200
 @@ -446,6 +446,8 @@
  	select HAVE_MACH_CLKDEV
  	select CLKDEV_LOOKUP
@@ -27,10 +27,10 @@ Index: linux-3.10.13/arch/mips/Kconfig
  
  config SGI_IP22
  	bool "SGI IP22 (Indy/Indigo2)"
-Index: linux-3.10.13/drivers/pinctrl/Kconfig
+Index: linux-3.10.17/drivers/pinctrl/Kconfig
 ===================================================================
---- linux-3.10.13.orig/drivers/pinctrl/Kconfig	2013-09-27 02:18:49.000000000 +0200
-+++ linux-3.10.13/drivers/pinctrl/Kconfig	2013-10-02 16:59:29.440051316 +0200
+--- linux-3.10.17.orig/drivers/pinctrl/Kconfig	2013-10-18 19:44:19.000000000 +0200
++++ linux-3.10.17/drivers/pinctrl/Kconfig	2013-10-24 16:17:14.964072221 +0200
 @@ -114,6 +114,11 @@
  	select PINMUX
  	select PINCONF
@@ -43,10 +43,10 @@ Index: linux-3.10.13/drivers/pinctrl/Kconfig
  config PINCTRL_FALCON
  	bool
  	depends on SOC_FALCON
-Index: linux-3.10.13/drivers/pinctrl/Makefile
+Index: linux-3.10.17/drivers/pinctrl/Makefile
 ===================================================================
---- linux-3.10.13.orig/drivers/pinctrl/Makefile	2013-09-27 02:18:49.000000000 +0200
-+++ linux-3.10.13/drivers/pinctrl/Makefile	2013-10-02 16:59:29.440051316 +0200
+--- linux-3.10.17.orig/drivers/pinctrl/Makefile	2013-10-18 19:44:19.000000000 +0200
++++ linux-3.10.17/drivers/pinctrl/Makefile	2013-10-24 16:17:14.964072221 +0200
 @@ -45,6 +45,7 @@
  obj-$(CONFIG_PINCTRL_S3C64XX)	+= pinctrl-s3c64xx.o
  obj-$(CONFIG_PINCTRL_XWAY)	+= pinctrl-xway.o
@@ -55,11 +55,11 @@ Index: linux-3.10.13/drivers/pinctrl/Makefile
  
  obj-$(CONFIG_PLAT_ORION)        += mvebu/
  obj-$(CONFIG_ARCH_SHMOBILE)	+= sh-pfc/
-Index: linux-3.10.13/drivers/pinctrl/pinctrl-rt2880.c
+Index: linux-3.10.17/drivers/pinctrl/pinctrl-rt2880.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-3.10.13/drivers/pinctrl/pinctrl-rt2880.c	2013-10-02 18:24:18.556268869 +0200
-@@ -0,0 +1,456 @@
++++ linux-3.10.17/drivers/pinctrl/pinctrl-rt2880.c	2013-10-24 16:46:23.556113888 +0200
+@@ -0,0 +1,463 @@
 +/*
 + *  linux/drivers/pinctrl/pinctrl-rt2880.c
 + *
@@ -370,8 +370,6 @@ Index: linux-3.10.13/drivers/pinctrl/pinctrl-rt2880.c
 +	/* add remaining functions */
 +	for (i = 0; i < p->group_count; i++) {
 +		for (j = 0; j < p->groups[i].func_count; j++) {
-+			int k;
-+
 +			f[c] = &p->groups[i].func[j];
 +			f[c]->groups = devm_kzalloc(p->dev, sizeof(int), GFP_KERNEL);
 +			f[c]->groups[0] = i;
@@ -412,6 +410,15 @@ Index: linux-3.10.13/drivers/pinctrl/pinctrl-rt2880.c
 +	if (!p->pads || !p->gpio ) {
 +		dev_err(p->dev, "Failed to allocate gpio data\n");
 +		return -ENOMEM;
++	}
++
++	memset(p->gpio, 1, sizeof(uint8_t) * p->max_pins);
++	for (i = 0; i < p->func_count; i++) {
++		if (!p->func[i]->pin_count)
++			continue;
++
++		for (j = 0; j < p->func[i]->pin_count; j++)
++			p->gpio[p->func[i]->pins[j]] = 0;
 +	}
 +
 +	/* pin 0 is always a gpio */
@@ -516,10 +523,10 @@ Index: linux-3.10.13/drivers/pinctrl/pinctrl-rt2880.c
 +}
 +
 +core_initcall_sync(rt2880_pinmux_init);
-Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/pinmux.h
+Index: linux-3.10.17/arch/mips/include/asm/mach-ralink/pinmux.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-3.10.13/arch/mips/include/asm/mach-ralink/pinmux.h	2013-10-02 16:59:29.444051317 +0200
++++ linux-3.10.17/arch/mips/include/asm/mach-ralink/pinmux.h	2013-10-24 16:17:14.968072221 +0200
 @@ -0,0 +1,47 @@
 +/*
 + *  This program is free software; you can redistribute it and/or modify
@@ -568,10 +575,10 @@ Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/pinmux.h
 +extern struct rt2880_pmx_group *rt2880_pinmux_data;
 +
 +#endif
-Index: linux-3.10.13/arch/mips/ralink/mt7620.c
+Index: linux-3.10.17/arch/mips/ralink/mt7620.c
 ===================================================================
---- linux-3.10.13.orig/arch/mips/ralink/mt7620.c	2013-10-02 16:59:28.912051293 +0200
-+++ linux-3.10.13/arch/mips/ralink/mt7620.c	2013-10-02 18:23:35.940267055 +0200
+--- linux-3.10.17.orig/arch/mips/ralink/mt7620.c	2013-10-24 16:17:14.428072211 +0200
++++ linux-3.10.17/arch/mips/ralink/mt7620.c	2013-10-24 16:17:14.968072221 +0200
 @@ -17,6 +17,7 @@
  #include <asm/mipsregs.h>
  #include <asm/mach-ralink/ralink_regs.h>
@@ -739,10 +746,10 @@ Index: linux-3.10.13/arch/mips/ralink/mt7620.c
 +
 +	rt2880_pinmux_data = mt7620a_pinmux_data;
  }
-Index: linux-3.10.13/arch/mips/ralink/rt305x.c
+Index: linux-3.10.17/arch/mips/ralink/rt305x.c
 ===================================================================
---- linux-3.10.13.orig/arch/mips/ralink/rt305x.c	2013-10-02 16:59:29.140051302 +0200
-+++ linux-3.10.13/arch/mips/ralink/rt305x.c	2013-10-02 16:59:29.444051317 +0200
+--- linux-3.10.17.orig/arch/mips/ralink/rt305x.c	2013-10-24 16:17:14.664072214 +0200
++++ linux-3.10.17/arch/mips/ralink/rt305x.c	2013-10-24 16:17:14.968072221 +0200
 @@ -17,90 +17,71 @@
  #include <asm/mipsregs.h>
  #include <asm/mach-ralink/ralink_regs.h>
@@ -922,10 +929,10 @@ Index: linux-3.10.13/arch/mips/ralink/rt305x.c
 +		rt2880_pinmux_data = rt3352_pinmux_data;
  	}
  }
-Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/rt305x.h
+Index: linux-3.10.17/arch/mips/include/asm/mach-ralink/rt305x.h
 ===================================================================
---- linux-3.10.13.orig/arch/mips/include/asm/mach-ralink/rt305x.h	2013-09-27 02:18:49.000000000 +0200
-+++ linux-3.10.13/arch/mips/include/asm/mach-ralink/rt305x.h	2013-10-02 16:59:29.444051317 +0200
+--- linux-3.10.17.orig/arch/mips/include/asm/mach-ralink/rt305x.h	2013-10-18 19:44:19.000000000 +0200
++++ linux-3.10.17/arch/mips/include/asm/mach-ralink/rt305x.h	2013-10-24 16:17:14.968072221 +0200
 @@ -125,24 +125,28 @@
  #define RT305X_GPIO_GE0_TXD0		40
  #define RT305X_GPIO_GE0_RXCLK		51
@@ -970,10 +977,10 @@ Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/rt305x.h
  
  #define RT3352_SYSC_REG_SYSCFG0		0x010
  #define RT3352_SYSC_REG_SYSCFG1         0x014
-Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/mt7620.h
+Index: linux-3.10.17/arch/mips/include/asm/mach-ralink/mt7620.h
 ===================================================================
---- linux-3.10.13.orig/arch/mips/include/asm/mach-ralink/mt7620.h	2013-10-02 16:59:28.708051287 +0200
-+++ linux-3.10.13/arch/mips/include/asm/mach-ralink/mt7620.h	2013-10-02 16:59:29.444051317 +0200
+--- linux-3.10.17.orig/arch/mips/include/asm/mach-ralink/mt7620.h	2013-10-24 16:17:14.220072209 +0200
++++ linux-3.10.17/arch/mips/include/asm/mach-ralink/mt7620.h	2013-10-24 16:17:14.968072221 +0200
 @@ -59,7 +59,6 @@
  #define MT7620_DDR2_SIZE_MIN		32
  #define MT7620_DDR2_SIZE_MAX		256
@@ -1010,10 +1017,10 @@ Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/mt7620.h
 +#define MT7620_GPIO_MODE_WDT		22
  
  #endif
-Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/rt3883.h
+Index: linux-3.10.17/arch/mips/include/asm/mach-ralink/rt3883.h
 ===================================================================
---- linux-3.10.13.orig/arch/mips/include/asm/mach-ralink/rt3883.h	2013-09-27 02:18:49.000000000 +0200
-+++ linux-3.10.13/arch/mips/include/asm/mach-ralink/rt3883.h	2013-10-02 16:59:29.444051317 +0200
+--- linux-3.10.17.orig/arch/mips/include/asm/mach-ralink/rt3883.h	2013-10-18 19:44:19.000000000 +0200
++++ linux-3.10.17/arch/mips/include/asm/mach-ralink/rt3883.h	2013-10-24 16:17:14.968072221 +0200
 @@ -112,8 +112,6 @@
  #define RT3883_CLKCFG1_PCI_CLK_EN	BIT(19)
  #define RT3883_CLKCFG1_UPHY0_CLK_EN	BIT(18)
@@ -1044,10 +1051,10 @@ Index: linux-3.10.13/arch/mips/include/asm/mach-ralink/rt3883.h
  #define RT3883_GPIO_MODE_PCI_SHIFT	11
  #define RT3883_GPIO_MODE_PCI_MASK	0x7
  #define RT3883_GPIO_MODE_PCI		(RT3883_GPIO_MODE_PCI_MASK << RT3883_GPIO_MODE_PCI_SHIFT)
-Index: linux-3.10.13/arch/mips/ralink/common.h
+Index: linux-3.10.17/arch/mips/ralink/common.h
 ===================================================================
---- linux-3.10.13.orig/arch/mips/ralink/common.h	2013-10-02 16:59:28.532051276 +0200
-+++ linux-3.10.13/arch/mips/ralink/common.h	2013-10-02 16:59:29.444051317 +0200
+--- linux-3.10.17.orig/arch/mips/ralink/common.h	2013-10-24 16:17:14.040072202 +0200
++++ linux-3.10.17/arch/mips/ralink/common.h	2013-10-24 16:17:14.968072221 +0200
 @@ -11,25 +11,6 @@
  
  #define RAMIPS_SYS_TYPE_LEN	32
@@ -1074,10 +1081,10 @@ Index: linux-3.10.13/arch/mips/ralink/common.h
  struct ralink_soc_info {
  	unsigned char sys_type[RAMIPS_SYS_TYPE_LEN];
  	unsigned char *compatible;
-Index: linux-3.10.13/arch/mips/ralink/rt3883.c
+Index: linux-3.10.17/arch/mips/ralink/rt3883.c
 ===================================================================
---- linux-3.10.13.orig/arch/mips/ralink/rt3883.c	2013-09-27 02:18:49.000000000 +0200
-+++ linux-3.10.13/arch/mips/ralink/rt3883.c	2013-10-02 16:59:29.444051317 +0200
+--- linux-3.10.17.orig/arch/mips/ralink/rt3883.c	2013-10-18 19:44:19.000000000 +0200
++++ linux-3.10.17/arch/mips/ralink/rt3883.c	2013-10-24 16:17:14.972072223 +0200
 @@ -17,132 +17,50 @@
  #include <asm/mipsregs.h>
  #include <asm/mach-ralink/ralink_regs.h>
