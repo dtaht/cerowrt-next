@@ -1,18 +1,19 @@
-From d16e421bd16727971951dda5a7a075530b98cbb2 Mon Sep 17 00:00:00 2001
+From b324fcab5b6ee43d0915f082f0b16ba2df7d77f2 Mon Sep 17 00:00:00 2001
 From: Dave Taht <dave.taht@bufferbloat.net>
-Date: Mon, 12 Aug 2013 12:38:56 -0700
-Subject: [PATCH 3/3] Add support for advanced codel and fq_codel versions
+Date: Sun, 27 Oct 2013 12:24:32 -0700
+Subject: [PATCH 3/3] codels: add alternate codels to stack
 
-This moves forward the fix for not testing maxpacket.
+This includes some mods to efq_codel that I'd been meaning to try
+for a while.
 ---
  include/net/codel2.h      |  354 +++++++++++++++++++++++++
- include/net/codel3.h      |  380 +++++++++++++++++++++++++++
+ include/net/codel3.h      |  384 +++++++++++++++++++++++++++
  net/sched/Kconfig         |   35 +++
  net/sched/Makefile        |    3 +
  net/sched/sch_efq_codel.c |  641 +++++++++++++++++++++++++++++++++++++++++++++
  net/sched/sch_nfq_codel.c |  633 ++++++++++++++++++++++++++++++++++++++++++++
  net/sched/sch_ns2_codel.c |  276 +++++++++++++++++++
- 7 files changed, 2322 insertions(+)
+ 7 files changed, 2326 insertions(+)
  create mode 100644 include/net/codel2.h
  create mode 100644 include/net/codel3.h
  create mode 100644 net/sched/sch_efq_codel.c
@@ -381,10 +382,10 @@ index 0000000..4119111
 +#endif
 diff --git a/include/net/codel3.h b/include/net/codel3.h
 new file mode 100644
-index 0000000..9d8caf3
+index 0000000..fe21203
 --- /dev/null
 +++ b/include/net/codel3.h
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,384 @@
 +#ifndef __NET_SCHED_CODEL_H
 +#define __NET_SCHED_CODEL_H
 +
@@ -689,13 +690,16 @@ index 0000000..9d8caf3
 +			 * that the next drop should happen now,
 +			 * hence the while loop.
 +			 */
++
 +			vars->count++; /* dont care of possible wrap
 +					* since there is no more divide
 +					*/
 +			codel_Newton_step(vars);
 +			while (skb && vars->dropping &&
 +			       codel_time_after_eq(now, vars->drop_next)) {
-+				if (params->ecn && INET_ECN_set_ce(skb)) {
++				s64 diff = now - vars->drop_next;
++				if (params->ecn && diff > 4 * params->target)
++					if (INET_ECN_set_ce(skb)) {
 +					stats->ecn_mark++;
 +					vars->drop_next =
 +						codel_control_law(vars->drop_next,
@@ -703,6 +707,7 @@ index 0000000..9d8caf3
 +								  vars->rec_inv_sqrt);
 +					goto end;
 +				}
++				
 +				qdisc_drop(skb, sch);
 +				stats->drop_count++;
 +				skb = dequeue_func(vars, sch);
@@ -766,10 +771,10 @@ index 0000000..9d8caf3
 +}
 +#endif
 diff --git a/net/sched/Kconfig b/net/sched/Kconfig
-index 14c1376..8fdcd98 100644
+index 9183716..1a78276 100644
 --- a/net/sched/Kconfig
 +++ b/net/sched/Kconfig
-@@ -272,6 +272,17 @@ config NET_SCH_CODEL
+@@ -261,6 +261,17 @@ config NET_SCH_CODEL
  
  	  If unsure, say N.
  
@@ -787,9 +792,9 @@ index 14c1376..8fdcd98 100644
  config NET_SCH_FQ_CODEL
  	tristate "Fair Queue Controlled Delay AQM (FQ_CODEL)"
  	help
-@@ -283,6 +294,30 @@ config NET_SCH_FQ_CODEL
+@@ -285,6 +296,30 @@ config NET_SCH_PIE
  
- 	  If unsure, say N.
+           If unsure, say N.
  
 +config NET_SCH_NFQ_CODEL
 +	tristate "New Fair Queue Controlled Delay AQM (FQ_CODEL)"
@@ -819,19 +824,19 @@ index 14c1376..8fdcd98 100644
  	tristate "Ingress Qdisc"
  	depends on NET_CLS_ACT
 diff --git a/net/sched/Makefile b/net/sched/Makefile
-index be0cab8..8144035 100644
+index 3b279d3..27d2275 100644
 --- a/net/sched/Makefile
 +++ b/net/sched/Makefile
-@@ -40,6 +40,9 @@ obj-$(CONFIG_NET_SCH_QFQ)	+= sch_qfq.o
- obj-$(CONFIG_NET_SCH_PIE)	+= sch_pie.o
- obj-$(CONFIG_NET_SCH_CODEL)	+= sch_codel.o
- obj-$(CONFIG_NET_SCH_FQ_CODEL)	+= sch_fq_codel.o
-+obj-$(CONFIG_NET_SCH_NFQ_CODEL)	+= sch_nfq_codel.o
-+obj-$(CONFIG_NET_SCH_EFQ_CODEL)	+= sch_efq_codel.o
-+obj-$(CONFIG_NET_SCH_NS2_CODEL)	+= sch_ns2_codel.o
- 
- obj-$(CONFIG_NET_CLS_U32)	+= cls_u32.o
- obj-$(CONFIG_NET_CLS_ROUTE4)	+= cls_route.o
+@@ -33,6 +33,9 @@ obj-$(CONFIG_NET_SCH_MULTIQ)	+= sch_multiq.o
+ obj-$(CONFIG_NET_SCH_ATM)	+= sch_atm.o
+ obj-$(CONFIG_NET_SCH_NETEM)	+= sch_netem.o
+ obj-$(CONFIG_NET_SCH_DRR)	+= sch_drr.o
++obj-$(CONFIG_NET_SCH_NFQ_CODEL)        += sch_nfq_codel.o
++obj-$(CONFIG_NET_SCH_EFQ_CODEL)        += sch_efq_codel.o
++obj-$(CONFIG_NET_SCH_NS2_CODEL)        += sch_ns2_codel.o
+ obj-$(CONFIG_NET_SCH_PLUG)	+= sch_plug.o
+ obj-$(CONFIG_NET_SCH_MQPRIO)	+= sch_mqprio.o
+ obj-$(CONFIG_NET_SCH_CHOKE)	+= sch_choke.o
 diff --git a/net/sched/sch_efq_codel.c b/net/sched/sch_efq_codel.c
 new file mode 100644
 index 0000000..ceb2c03
