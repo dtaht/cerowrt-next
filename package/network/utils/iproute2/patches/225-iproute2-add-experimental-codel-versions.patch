@@ -14,19 +14,19 @@ Subject: [PATCH] iproute2: add experimental codel versions
  create mode 100644 tc/q_ns2_codel.c
 
 diff --git a/tc/Makefile b/tc/Makefile
-index 64d93ad..fbd4be7 100644
+index d831b9c..799f1c0 100644
 --- a/tc/Makefile
 +++ b/tc/Makefile
-@@ -49,6 +49,9 @@ TCMODULES += em_meta.o
+@@ -50,6 +50,9 @@ TCMODULES += em_meta.o
  TCMODULES += q_mqprio.o
  TCMODULES += q_codel.o
  TCMODULES += q_fq_codel.o
 +TCMODULES += q_ns2_codel.o
-+TCMODULES += q_efq_codel.o
++TCMODULES += q_efq_codel.o  
 +TCMODULES += q_nfq_codel.o
- 
- TCSO :=
- ifeq ($(TC_CONFIG_ATM),y)
+ TCMODULES += q_pie.o
+
+ ifeq ($(TC_CONFIG_IPSET), y)
 diff --git a/tc/q_efq_codel.c b/tc/q_efq_codel.c
 new file mode 100644
 index 0000000..b80e5e4
