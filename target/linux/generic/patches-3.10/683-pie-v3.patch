@@ -1,0 +1,204 @@
+From fa8939fa1d7df230a3e6eb0888f222043ae7328c Mon Sep 17 00:00:00 2001
+From: Dave Taht <dave.taht@bufferbloat.net>
+Date: Fri, 1 Nov 2013 16:27:05 -0700
+Subject: [PATCH] pie v3
+
+---
+ net/sched/sch_pie.c |   86 ++++++++++++++++++++++-----------------------------
+ 1 file changed, 37 insertions(+), 49 deletions(-)
+
+diff --git a/net/sched/sch_pie.c b/net/sched/sch_pie.c
+index 470e477..2110526 100644
+--- a/net/sched/sch_pie.c
++++ b/net/sched/sch_pie.c
+@@ -39,7 +39,7 @@
+ /* parameters used */
+ struct pie_params {
+ 	psched_time_t target;	/* user specified target delay in pschedtime */
+-	psched_time_t tupdate;	/* frequency with which the timer fires */
++	u32 tupdate;		/* frequency with which the timer fires (us) */
+ 	u32 limit;		/* number of packets that can be enqueued */
+ 	u32 alpha;		/* alpha and beta are between -4 and 4 */
+ 	u32 beta;		/* and are used for shift relative to 1 */
+@@ -80,7 +80,7 @@ static void pie_params_init(struct pie_params *params)
+ {
+ 	params->alpha = 2;
+ 	params->beta = 20;
+-	params->tupdate = PSCHED_NS2TICKS(30 * NSEC_PER_MSEC);	/* 30 ms */
++	params->tupdate = 30 * USEC_PER_MSEC;	/* 30 ms */
+ 	params->limit = 1000;	/* default of 1000 packets */
+ 	params->target = PSCHED_NS2TICKS(20 * NSEC_PER_MSEC);	/* 20 ms */
+ 	params->ecn = false;
+@@ -193,15 +193,12 @@ static int pie_change(struct Qdisc *sch, struct nlattr *opt)
+ 		/* target is in us */
+ 		u32 target = nla_get_u32(tb[TCA_PIE_TARGET]);
+ 		/* convert to pschedtime */
+-		q->params.target = PSCHED_NS2TICKS((u64) target * NSEC_PER_USEC);
++		q->params.target = PSCHED_NS2TICKS((u64)target * NSEC_PER_USEC);
+ 	}
+ 
+-	if (tb[TCA_PIE_TUPDATE]) {
+-		/* tupdate is in us */
+-		u32 tupdate = nla_get_u32(tb[TCA_PIE_TUPDATE]);
+-		/* convert to pschedtime */
+-		q->params.tupdate = PSCHED_NS2TICKS((u64) tupdate * NSEC_PER_USEC);
+-	}
++	/* tupdate is in us */
++	if (tb[TCA_PIE_TUPDATE])
++		q->params.tupdate = nla_get_u32(tb[TCA_PIE_TUPDATE]);
+ 
+ 	if (tb[TCA_PIE_LIMIT]) {
+ 		u32 limit = nla_get_u32(tb[TCA_PIE_LIMIT]);
+@@ -245,7 +242,6 @@ static void pie_process_dequeue(struct Qdisc *sch, struct sk_buff *skb)
+ 	 *  we have enough packets to calculate the drain rate. Save
+ 	 *  current time as dq_tstamp and start measurement cycle.
+ 	 */
+-
+ 	if (qlen >= QUEUE_THRESHOLD && q->vars.dq_count == DQCOUNT_INVALID) {
+ 		q->vars.dq_tstamp = psched_get_time();
+ 		q->vars.dq_count = 0;
+@@ -286,7 +282,6 @@ static void pie_process_dequeue(struct Qdisc *sch, struct sk_buff *skb)
+ 			 * dq_count to 0 to re-enter the if block when the next
+ 			 * packet is dequeued
+ 			 */
+-
+ 			if (qlen < QUEUE_THRESHOLD)
+ 				q->vars.dq_count = DQCOUNT_INVALID;
+ 			else {
+@@ -310,10 +305,10 @@ static void calculate_probability(struct Qdisc *sch)
+ 	u32 qlen = sch->qstats.backlog;	/* queue size in bytes */
+ 	psched_time_t qdelay = 0;	/* in pschedtime */
+ 	psched_time_t qdelay_old = q->vars.qdelay;	/* in pschedtime */
+-	s32 delta = 0;		/* signed difference */
++	s32 delta = 0;		/* determines the change in probability  */
+ 	u32 oldprob;
+ 	u32 alpha, beta;
+-	bool update_prob = true;	/* Should probability be updated? */
++	bool update_prob = true;
+ 
+ 	q->vars.qdelay_old = q->vars.qdelay;
+ 
+@@ -419,21 +414,16 @@ static void pie_timer(unsigned long arg)
+ {
+ 	struct Qdisc *sch = (struct Qdisc *)arg;
+ 	struct pie_sched_data *q = qdisc_priv(sch);
+-	u32 tup;
+ 	spinlock_t *root_lock = qdisc_lock(qdisc_root_sleeping(sch));
+ 
+ 	spin_lock(root_lock);
+ 	calculate_probability(sch);
+ 
+-	/* reset the timer to fire after 'tupdate'. tupdate is currently in
+-	 * psched_time; mod_timer expects time to be in jiffies so convert from
+-	 * pschedtime to jiffies
++	/* reset the timer to fire after 'tupdate'. Convert from us to jiffies.
+ 	 */
+-	tup = PSCHED_TICKS2NS(q->params.tupdate);
+-	tup = tup / NSEC_PER_MSEC;
+-	tup = (tup * HZ) / MSEC_PER_SEC;
+-
+-	mod_timer(&q->adapt_timer, jiffies + tup);
++	if (q->params.tupdate)
++		mod_timer(&q->adapt_timer, jiffies +
++			  usecs_to_jiffies(q->params.tupdate));
+ 	spin_unlock(root_lock);
+ 
+ }
+@@ -468,14 +458,12 @@ static int pie_dump(struct Qdisc *sch, struct sk_buff *skb)
+ 	if (opts == NULL)
+ 		goto nla_put_failure;
+ 
+-	/* convert target and tupdate from pschedtime to us */
++	/* convert target from pschedtime to us */
+ 	if (nla_put_u32(skb, TCA_PIE_TARGET,
+ 			((u32) PSCHED_TICKS2NS(q->params.target)) /
+ 			NSEC_PER_USEC) ||
+ 	    nla_put_u32(skb, TCA_PIE_LIMIT, sch->limit) ||
+-	    nla_put_u32(skb, TCA_PIE_TUPDATE,
+-			   ((u32) PSCHED_TICKS2NS(q->params.tupdate)) /
+-			   NSEC_PER_USEC) ||
++	    nla_put_u32(skb, TCA_PIE_TUPDATE, q->params.tupdate) ||
+ 	    nla_put_u32(skb, TCA_PIE_ALPHA, q->params.alpha) ||
+ 	    nla_put_u32(skb, TCA_PIE_BETA, q->params.beta) ||
+ 	    nla_put_u32(skb, TCA_PIE_ECN, q->params.ecn) ||
+@@ -494,22 +482,23 @@ static int pie_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
+ {
+ 	struct pie_sched_data *q = qdisc_priv(sch);
+ 	struct tc_pie_xstats st = {
+-		.prob = q->vars.prob,
+-		.delay = ((u32) PSCHED_TICKS2NS(q->vars.qdelay)) / NSEC_PER_USEC,
++		.prob		= q->vars.prob,
++		.delay		= ((u32) PSCHED_TICKS2NS(q->vars.qdelay)) /
++				   NSEC_PER_USEC,
+ 		/* unscale and return dq_rate in bytes per sec */
+-		.avg_dq_rate = q->vars.avg_dq_rate *
+-		    (PSCHED_TICKS_PER_SEC) >> PIE_SCALE,
+-		.packets_in = q->stats.packets_in,
+-		.overlimit = q->stats.overlimit,
+-		.maxq = q->stats.maxq,
+-		.dropped = q->stats.dropped,
+-		.ecn_mark = q->stats.ecn_mark,
++		.avg_dq_rate	= q->vars.avg_dq_rate *
++				  (PSCHED_TICKS_PER_SEC) >> PIE_SCALE,
++		.packets_in	= q->stats.packets_in,
++		.overlimit	= q->stats.overlimit,
++		.maxq		= q->stats.maxq,
++		.dropped	= q->stats.dropped,
++		.ecn_mark	= q->stats.ecn_mark,
+ 	};
+ 
+ 	return gnet_stats_copy_app(d, &st, sizeof(st));
+ }
+ 
+-static inline struct sk_buff *pie_qdisc_dequeue(struct Qdisc *sch)
++static struct sk_buff *pie_qdisc_dequeue(struct Qdisc *sch)
+ {
+ 	struct sk_buff *skb;
+ 	skb = __qdisc_dequeue_head(sch, &sch->q);
+@@ -518,7 +507,6 @@ static inline struct sk_buff *pie_qdisc_dequeue(struct Qdisc *sch)
+ 		return NULL;
+ 
+ 	pie_process_dequeue(sch, skb);
+-
+ 	return skb;
+ }
+ 
+@@ -532,23 +520,23 @@ static void pie_reset(struct Qdisc *sch)
+ static void pie_destroy(struct Qdisc *sch)
+ {
+ 	struct pie_sched_data *q = qdisc_priv(sch);
++	q->params.tupdate = 0;
+ 	del_timer_sync(&q->adapt_timer);
+ }
+ 
+ static struct Qdisc_ops pie_qdisc_ops __read_mostly = {
+ 	.id = "pie",
+-	.priv_size = sizeof(struct pie_sched_data),
+-
+-	.enqueue = pie_qdisc_enqueue,
+-	.dequeue = pie_qdisc_dequeue,
+-	.peek = qdisc_peek_dequeued,
+-	.init = pie_init,
+-	.destroy = pie_destroy,
+-	.reset = pie_reset,
+-	.change = pie_change,
+-	.dump = pie_dump,
+-	.dump_stats = pie_dump_stats,
+-	.owner = THIS_MODULE,
++	.priv_size	= sizeof(struct pie_sched_data),
++	.enqueue	= pie_qdisc_enqueue,
++	.dequeue	= pie_qdisc_dequeue,
++	.peek		= qdisc_peek_dequeued,
++	.init		= pie_init,
++	.destroy	= pie_destroy,
++	.reset		= pie_reset,
++	.change		= pie_change,
++	.dump		= pie_dump,
++	.dump_stats	= pie_dump_stats,
++	.owner		= THIS_MODULE,
+ };
+ 
+ static int __init pie_module_init(void)
+-- 
+1.7.9.5
+
