@@ -711,7 +711,7 @@ static struct platform_t __initdata platforms[] = {
 		.name		= "ASUS RT-N16",
 		.buttons	= {
 			{ .name = "reset",	.gpio = 1 << 8 },
-			{ .name = "ses",	.gpio = 1 << 5 },
+			{ .name = "ses",	.gpio = 1 << 6 },
 		},
 		.leds		= {
 			{ .name = "power",	.gpio = 1 << 1, .polarity = REVERSE },
@@ -1428,6 +1428,8 @@ static struct platform_t __init *platform_detect(void)
 		return &platforms[WRT300NV11];
 	case BCM47XX_BOARD_LINKSYS_WRT310NV1:
 		return &platforms[WRT310NV1];
+	case BCM47XX_BOARD_LINKSYS_WRT54GSV1:
+		return &platforms[WRT54G];
 	case BCM47XX_BOARD_LINKSYS_WRT54G3GV2:
 		return &platforms[WRT54G3GV2_VF];
 	case BCM47XX_BOARD_LINKSYS_WRT610NV1:
