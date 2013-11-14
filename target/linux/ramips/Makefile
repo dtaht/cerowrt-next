@@ -16,9 +16,8 @@ LINUX_VERSION:=3.10.18
 
 include $(INCLUDE_DIR)/target.mk
 DEFAULT_PACKAGES+=\
-	kmod-leds-gpio kmod-input-core kmod-input-polldev \
-	kmod-input-gpio-keys-polled kmod-button-hotplug \
-	kmod-rt2800-pci wpad-mini swconfig
+	kmod-leds-gpio kmod-gpio-button-hotplug \
+	kmod-rt2800-pci kmod-rt2800-soc wpad-mini swconfig
 
 define Target/Description
 	Build firmware images for Ralink RT288x/RT3xxx based boards.
