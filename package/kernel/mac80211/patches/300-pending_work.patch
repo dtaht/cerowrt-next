@@ -536,7 +536,17 @@
  	INIT_WORK(&sc->hw_reset_work, ath_reset_work);
  	INIT_WORK(&sc->hw_check_work, ath_hw_check);
  	INIT_WORK(&sc->paprd_work, ath_paprd_calibrate);
-@@ -862,20 +864,11 @@ static const struct ieee80211_iface_comb
+@@ -845,7 +847,8 @@ static const struct ieee80211_iface_limi
+ };
+ 
+ static const struct ieee80211_iface_limit if_dfs_limits[] = {
+-	{ .max = 1,	.types = BIT(NL80211_IFTYPE_AP) },
++	{ .max = 1,	.types = BIT(NL80211_IFTYPE_AP) |
++				 BIT(NL80211_IFTYPE_ADHOC) },
+ };
+ 
+ static const struct ieee80211_iface_combination if_comb[] = {
+@@ -862,20 +865,11 @@ static const struct ieee80211_iface_comb
  		.max_interfaces = 1,
  		.num_different_channels = 1,
  		.beacon_int_infra_match = true,
@@ -559,7 +569,7 @@
  void ath9k_set_hw_capab(struct ath_softc *sc, struct ieee80211_hw *hw)
  {
  	struct ath_hw *ah = sc->sc_ah;
-@@ -925,16 +918,6 @@ void ath9k_set_hw_capab(struct ath_softc
+@@ -925,16 +919,6 @@ void ath9k_set_hw_capab(struct ath_softc
  	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_5_10_MHZ;
  	hw->wiphy->flags |= WIPHY_FLAG_HAS_CHANNEL_SWITCH;
  
@@ -576,7 +586,7 @@
  	hw->queues = 4;
  	hw->max_rates = 4;
  	hw->channel_change_time = 5000;
-@@ -960,6 +943,7 @@ void ath9k_set_hw_capab(struct ath_softc
+@@ -960,6 +944,7 @@ void ath9k_set_hw_capab(struct ath_softc
  		hw->wiphy->bands[IEEE80211_BAND_5GHZ] =
  			&sc->sbands[IEEE80211_BAND_5GHZ];
  
@@ -584,7 +594,7 @@
  	ath9k_reload_chainmask_settings(sc);
  
  	SET_IEEE80211_PERM_ADDR(hw, common->macaddr);
-@@ -1058,6 +1042,7 @@ static void ath9k_deinit_softc(struct at
+@@ -1058,6 +1043,7 @@ static void ath9k_deinit_softc(struct at
  		if (ATH_TXQ_SETUP(sc, i))
  			ath_tx_cleanupq(sc, &sc->tx.txq[i]);
  
@@ -4371,3 +4381,130 @@
 +			    sc->debug.debugfs_phy, sc,
 +			    &fops_tx99_power);
 +}
+--- a/drivers/net/wireless/ath/ath9k/dfs_debug.c
++++ b/drivers/net/wireless/ath/ath9k/dfs_debug.c
+@@ -44,14 +44,20 @@ static ssize_t read_file_dfs(struct file
+ 	if (buf == NULL)
+ 		return -ENOMEM;
+ 
+-	if (sc->dfs_detector)
+-		dfs_pool_stats = sc->dfs_detector->get_stats(sc->dfs_detector);
+-
+ 	len += scnprintf(buf + len, size - len, "DFS support for "
+ 			 "macVersion = 0x%x, macRev = 0x%x: %s\n",
+ 			 hw_ver->macVersion, hw_ver->macRev,
+ 			 (sc->sc_ah->caps.hw_caps & ATH9K_HW_CAP_DFS) ?
+ 					"enabled" : "disabled");
++
++	if (!sc->dfs_detector) {
++		len += scnprintf(buf + len, size - len,
++				"DFS detector not enabled\n");
++		goto exit;
++	}
++
++	dfs_pool_stats = sc->dfs_detector->get_stats(sc->dfs_detector);
++
+ 	len += scnprintf(buf + len, size - len, "Pulse detector statistics:\n");
+ 	ATH9K_DFS_STAT("pulse events reported   ", pulses_total);
+ 	ATH9K_DFS_STAT("invalid pulse events    ", pulses_no_dfs);
+@@ -76,6 +82,7 @@ static ssize_t read_file_dfs(struct file
+ 	ATH9K_DFS_POOL_STAT("Seqs. alloc error       ", pseq_alloc_error);
+ 	ATH9K_DFS_POOL_STAT("Seqs. in use            ", pseq_used);
+ 
++exit:
+ 	if (len > size)
+ 		len = size;
+ 
+--- a/drivers/net/wireless/ath/ath9k/ar9003_phy.c
++++ b/drivers/net/wireless/ath/ath9k/ar9003_phy.c
+@@ -701,6 +701,54 @@ static int ar9550_hw_get_modes_txgain_in
+ 	return ret;
+ }
+ 
++static void ar9003_doubler_fix(struct ath_hw *ah)
++{
++	if (AR_SREV_9300(ah) || AR_SREV_9580(ah) || AR_SREV_9550(ah)) {
++		REG_RMW(ah, AR_PHY_65NM_CH0_RXTX2,
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S |
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S, 0);
++		REG_RMW(ah, AR_PHY_65NM_CH1_RXTX2,
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S |
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S, 0);
++		REG_RMW(ah, AR_PHY_65NM_CH2_RXTX2,
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S |
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S, 0);
++
++		udelay(200);
++
++		REG_CLR_BIT(ah, AR_PHY_65NM_CH0_RXTX2,
++			    AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK);
++		REG_CLR_BIT(ah, AR_PHY_65NM_CH1_RXTX2,
++			    AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK);
++		REG_CLR_BIT(ah, AR_PHY_65NM_CH2_RXTX2,
++			    AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK);
++
++		udelay(1);
++
++		REG_RMW_FIELD(ah, AR_PHY_65NM_CH0_RXTX2,
++			      AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK, 1);
++		REG_RMW_FIELD(ah, AR_PHY_65NM_CH1_RXTX2,
++			      AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK, 1);
++		REG_RMW_FIELD(ah, AR_PHY_65NM_CH2_RXTX2,
++			      AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK, 1);
++
++		udelay(200);
++
++		REG_RMW_FIELD(ah, AR_PHY_65NM_CH0_SYNTH12,
++			      AR_PHY_65NM_CH0_SYNTH12_VREFMUL3, 0xf);
++
++		REG_RMW(ah, AR_PHY_65NM_CH0_RXTX2, 0,
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S |
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S);
++		REG_RMW(ah, AR_PHY_65NM_CH1_RXTX2, 0,
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S |
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S);
++		REG_RMW(ah, AR_PHY_65NM_CH2_RXTX2, 0,
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S |
++			1 << AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S);
++	}
++}
++
+ static int ar9003_hw_process_ini(struct ath_hw *ah,
+ 				 struct ath9k_channel *chan)
+ {
+@@ -726,6 +774,8 @@ static int ar9003_hw_process_ini(struct 
+ 					   modesIndex);
+ 	}
+ 
++	ar9003_doubler_fix(ah);
++
+ 	/*
+ 	 * RXGAIN initvals.
+ 	 */
+--- a/drivers/net/wireless/ath/ath9k/ar9003_phy.h
++++ b/drivers/net/wireless/ath/ath9k/ar9003_phy.h
+@@ -656,13 +656,24 @@
+ #define AR_PHY_SYNTH4_LONG_SHIFT_SELECT   ((AR_SREV_9462(ah) || AR_SREV_9565(ah)) ? 0x00000001 : 0x00000002)
+ #define AR_PHY_SYNTH4_LONG_SHIFT_SELECT_S ((AR_SREV_9462(ah) || AR_SREV_9565(ah)) ? 0 : 1)
+ #define AR_PHY_65NM_CH0_SYNTH7      0x16098
++#define AR_PHY_65NM_CH0_SYNTH12     0x160ac
+ #define AR_PHY_65NM_CH0_BIAS1       0x160c0
+ #define AR_PHY_65NM_CH0_BIAS2       0x160c4
+ #define AR_PHY_65NM_CH0_BIAS4       0x160cc
++#define AR_PHY_65NM_CH0_RXTX2       0x16104
++#define AR_PHY_65NM_CH1_RXTX2       0x16504
++#define AR_PHY_65NM_CH2_RXTX2       0x16904
+ #define AR_PHY_65NM_CH0_RXTX4       0x1610c
+ #define AR_PHY_65NM_CH1_RXTX4       0x1650c
+ #define AR_PHY_65NM_CH2_RXTX4       0x1690c
+ 
++#define AR_PHY_65NM_CH0_SYNTH12_VREFMUL3           0x00780000
++#define AR_PHY_65NM_CH0_SYNTH12_VREFMUL3_S         19
++#define AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK         0x00000004
++#define AR_PHY_65NM_CH0_RXTX2_SYNTHON_MASK_S       2
++#define AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK        0x00000008
++#define AR_PHY_65NM_CH0_RXTX2_SYNTHOVR_MASK_S      3
++
+ #define AR_CH0_TOP	(AR_SREV_9300(ah) ? 0x16288 : \
+ 			 (((AR_SREV_9462(ah) || AR_SREV_9565(ah)) ? 0x1628c : 0x16280)))
+ #define AR_CH0_TOP_XPABIASLVL (AR_SREV_9550(ah) ? 0x3c0 : 0x300)
