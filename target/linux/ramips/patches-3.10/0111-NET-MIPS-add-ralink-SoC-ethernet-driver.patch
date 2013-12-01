@@ -108,7 +108,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
  obj-$(CONFIG_NET_VENDOR_RDC) += rdc/
 --- /dev/null
 +++ b/drivers/net/ethernet/ralink/Kconfig
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,32 @@
 +config NET_RALINK
 +	tristate "Ralink RT288X/RT3X5X/RT3662/RT3883/MT7620 ethernet driver"
 +	depends on RALINK
@@ -136,6 +136,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +config NET_RALINK_GSW_MT7620
 +	def_bool NET_RALINK
 +	depends on SOC_MT7620
++	select INET_LRO
 +	select NET_RALINK_MDIO
 +	select PHYLIB
 +	select SWCONFIG
@@ -2809,7 +2810,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +#endif
 --- /dev/null
 +++ b/drivers/net/ethernet/ralink/ralink_soc_eth.c
-@@ -0,0 +1,741 @@
+@@ -0,0 +1,769 @@
 +/*
 + *   This program is free software; you can redistribute it and/or modify
 + *   it under the terms of the GNU General Public License as published by
@@ -3002,7 +3003,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +
 +	for (i = 0; i < NUM_DMA_DESC; i++) {
 +		if (priv->soc->tx_dma) {
-+			priv->soc->tx_dma(priv, i, 0);
++			priv->soc->tx_dma(priv, i, NULL);
 +			continue;
 +		}
 +
@@ -3093,8 +3094,10 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	priv->tx_skb[tx] = skb;
 +	priv->tx_dma[tx].txd1 = (unsigned int) mapped_addr;
 +	wmb();
++
++	priv->tx_dma[tx].txd4 &= ~0x80;
 +	if (priv->soc->tx_dma)
-+		priv->soc->tx_dma(priv, tx, skb->len);
++		priv->soc->tx_dma(priv, tx, skb);
 +	else
 +		priv->tx_dma[tx].txd2 = TX_DMA_LSO | TX_DMA_PLEN0(skb->len);
 +
@@ -3102,8 +3105,6 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +		priv->tx_dma[tx].txd4 |= TX_DMA_CHKSUM;
 +	else
 +		priv->tx_dma[tx].txd4 &= ~TX_DMA_CHKSUM;
-+
-+	priv->tx_dma[tx].txd4 &= ~0x80;
 +
 +	dev->stats.tx_packets++;
 +	dev->stats.tx_bytes += skb->len;
@@ -3145,7 +3146,13 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +					priv->rx_skb[idx]->ip_summed = CHECKSUM_NONE;
 +				priv->netdev->stats.rx_packets++;
 +				priv->netdev->stats.rx_bytes += pktlen;
-+				netif_receive_skb(priv->rx_skb[idx]);
++
++#ifdef CONFIG_INET_LRO
++				if (priv->soc->get_skb_header && priv->rx_skb[idx]->ip_summed == CHECKSUM_UNNECESSARY)
++					lro_receive_skb(&priv->lro_mgr, priv->rx_skb[idx], NULL);
++				else
++#endif
++					netif_receive_skb(priv->rx_skb[idx]);
 +
 +				priv->rx_skb[idx] = new_skb;
 +
@@ -3171,6 +3178,10 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +		}
 +	}
 +
++#ifdef CONFIG_INET_LRO
++	if (priv->soc->get_skb_header)
++		lro_flush_all(&priv->lro_mgr);
++#endif
 +	if (complete) {
 +		napi_complete(&priv->rx_napi);
 +		fe_int_enable(priv->soc->rx_dly_int);
@@ -3466,6 +3477,9 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	netdev->watchdog_timeo = TX_TIMEOUT;
 +	netdev->features |= NETIF_F_IP_CSUM | NETIF_F_RXCSUM;
 +
++	if (fe_reg_table[FE_REG_FE_DMA_VID_BASE])
++		netdev->features |= NETIF_F_HW_VLAN_CTAG_TX;
++
 +	netdev->irq = platform_get_irq(pdev, 0);
 +	if (netdev->irq < 0) {
 +		dev_err(&pdev->dev, "no IRQ resource found\n");
@@ -3492,6 +3506,21 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +		return err;
 +	}
 +	netif_napi_add(netdev, &priv->rx_napi, fe_poll_rx, 32);
++
++#ifdef CONFIG_INET_LRO
++	if (priv->soc->get_skb_header) {
++		priv->lro_mgr.dev = netdev;
++		memset(&priv->lro_mgr.stats, 0, sizeof(priv->lro_mgr.stats));
++		priv->lro_mgr.features = LRO_F_NAPI;
++		priv->lro_mgr.ip_summed = CHECKSUM_UNNECESSARY;
++		priv->lro_mgr.ip_summed_aggr = CHECKSUM_UNNECESSARY;
++		priv->lro_mgr.max_desc = ARRAY_SIZE(priv->lro_arr);
++		priv->lro_mgr.max_aggr = 64;
++		priv->lro_mgr.frag_align_pad = 0;
++		priv->lro_mgr.lro_arr = priv->lro_arr;
++		priv->lro_mgr.get_skb_header = priv->soc->get_skb_header;
++	}
++#endif
 +
 +	platform_set_drvdata(pdev, netdev);
 +
@@ -3553,7 +3582,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +MODULE_DESCRIPTION("Ethernet driver for Ralink SoC");
 --- /dev/null
 +++ b/drivers/net/ethernet/ralink/ralink_soc_eth.h
-@@ -0,0 +1,375 @@
+@@ -0,0 +1,380 @@
 +/*
 + *   This program is free software; you can redistribute it and/or modify
 + *   it under the terms of the GNU General Public License as published by
@@ -3580,6 +3609,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +#include <linux/netdevice.h>
 +#include <linux/dma-mapping.h>
 +#include <linux/phy.h>
++#include <linux/inet_lro.h>
 +
 +
 +enum fe_reg {
@@ -3875,7 +3905,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	void (*reset_fe)(void);
 +	void (*set_mac)(struct fe_priv *priv, unsigned char *mac);
 +	void (*fwd_config)(struct fe_priv *priv);
-+	void (*tx_dma)(struct fe_priv *priv, int idx, int len);
++	void (*tx_dma)(struct fe_priv *priv, int idx, struct sk_buff *skb);
 +	void (*rx_dma)(struct fe_priv *priv, int idx, int len);
 +	int (*switch_init)(struct fe_priv *priv);
 +	int (*switch_config)(struct fe_priv *priv);
@@ -3886,6 +3916,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	int (*mdio_write)(struct mii_bus *bus, int phy_addr, int phy_reg, u16 val);
 +	int (*mdio_read)(struct mii_bus *bus, int phy_addr, int phy_reg);
 +	void (*mdio_adjust_link)(struct fe_priv *priv, int port);
++	int (*get_skb_header)(struct sk_buff *skb, void **iphdr, void **tcph, u64 *hdr_flags, void *priv);
 +
 +	void *swpriv;
 +	u32 pdma_glo_cfg;
@@ -3921,6 +3952,9 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	int				mii_irq[PHY_MAX_ADDR];
 +
 +	int				link[8];
++
++	struct net_lro_mgr		lro_mgr;
++	struct net_lro_desc		lro_arr[8];
 +};
 +
 +extern const struct of_device_id of_fe_match[];
@@ -3931,7 +3965,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +#endif /* FE_ETH_H */
 --- /dev/null
 +++ b/drivers/net/ethernet/ralink/soc_mt7620.c
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,154 @@
 +/*
 + *   This program is free software; you can redistribute it and/or modify
 + *   it under the terms of the GNU General Public License as published by
@@ -3951,6 +3985,7 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +
 +#include <linux/module.h>
 +#include <linux/platform_device.h>
++#include <linux/if_vlan.h>
 +
 +#include <asm/mach-ralink/ralink_regs.h>
 +
@@ -3998,23 +4033,61 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +
 +static void mt7620_fwd_config(struct fe_priv *priv)
 +{
++	int i;
++
++	/* frame engine will push VLAN tag regarding to VIDX feild in Tx desc. */
++	for (i = 0; i < 16; i += 2)
++		fe_w32(((i + 1) << 16) + i, MT7620_DMA_VID + (i * 2));
++
 +	fe_w32(fe_r32(MT7620A_GDMA1_FWD_CFG) & ~7, MT7620A_GDMA1_FWD_CFG);
 +	fe_w32(fe_r32(MT7620A_GDMA1_FWD_CFG) | (GDMA_ICS_EN | GDMA_TCS_EN | GDMA_UCS_EN), MT7620A_GDMA1_FWD_CFG);
 +	fe_w32(fe_r32(MT7620A_CDMA_CSG_CFG) | (CDMA_ICS_EN | CDMA_UCS_EN | CDMA_TCS_EN), MT7620A_CDMA_CSG_CFG);
 +}
 +
-+static void mt7620_tx_dma(struct fe_priv *priv, int idx, int len)
++static void mt7620_tx_dma(struct fe_priv *priv, int idx, struct sk_buff *skb)
 +{
-+	if (len)
-+		priv->tx_dma[idx].txd2 = TX_DMA_LSO | TX_DMA_PLEN0(len);
++	if (skb)
++		priv->tx_dma[idx].txd2 = TX_DMA_LSO | TX_DMA_PLEN0(skb->len);
 +	else
 +		priv->tx_dma[idx].txd2 = TX_DMA_LSO | TX_DMA_DONE;
++
++	if(skb && vlan_tx_tag_present(skb))
++		priv->tx_dma[idx].txd4 = 0x80 | (vlan_tx_tag_get(skb) >> 13) << 4 | (vlan_tx_tag_get(skb) & 0xF);
++	else
++		priv->tx_dma[idx].txd4 = 0;
 +}
 +
 +static void mt7620_rx_dma(struct fe_priv *priv, int idx, int len)
 +{
 +	priv->rx_dma[idx].rxd2 = RX_DMA_PLEN0(len);
 +}
++
++#ifdef CONFIG_INET_LRO
++static int
++mt7620_get_skb_header(struct sk_buff *skb, void **iphdr, void **tcph,
++			u64 *hdr_flags, void *_priv)
++{
++	struct iphdr *iph = NULL;
++	int vhdr_len = 0;
++
++	/*
++	 * Make sure that this packet is Ethernet II, is not VLAN
++	 * tagged, is IPv4, has a valid IP header, and is TCP.
++	 */
++	if (skb->protocol == 0x0081)
++		vhdr_len = VLAN_HLEN;
++
++	iph = (struct iphdr *)(skb->data + vhdr_len);
++	if(iph->protocol != IPPROTO_TCP)
++		return -1;
++
++	*iphdr = iph;
++	*tcph = skb->data + (iph->ihl << 2) + vhdr_len;
++	*hdr_flags = LRO_IPV4 | LRO_TCP;
++
++	return 0;
++}
++#endif
 +
 +static struct fe_soc_data mt7620_data = {
 +	.mac = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55 },
@@ -4036,6 +4109,9 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	.mdio_read = mt7620_mdio_read,
 +	.mdio_write = mt7620_mdio_write,
 +	.mdio_adjust_link = mt7620_mdio_link_adjust,
++#ifdef CONFIG_INET_LRO
++	.get_skb_header = mt7620_get_skb_header,
++#endif
 +};
 +
 +const struct of_device_id of_fe_match[] = {
@@ -4355,11 +4431,11 @@ Signed-off-by: John Crispin <blogic@openwrt.org>
 +	{
 +		.name = "llllw",
 +		.pvids = { 1, 1, 1, 1, 2, 1 },
-+		.vlans = { 0, 0x4f, 0x50 },
++		.vlans = { 0, 0x6f, 0x50 },
 +	}, {
 +		.name = "wllll",
 +		.pvids = { 2, 1, 1, 1, 1, 1 },
-+		.vlans = { 0, 0x5e, 0x41 },
++		.vlans = { 0, 0x7e, 0x41 },
 +	},
 +};
 +
