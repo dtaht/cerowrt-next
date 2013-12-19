@@ -191,7 +191,7 @@ static void ag71xx_ring_rx_clean(struct ag71xx *ag)
 	for (i = 0; i < ring->size; i++)
 		if (ring->buf[i].rx_buf) {
 			dma_unmap_single(&ag->dev->dev, ring->buf[i].dma_addr,
-					 AG71XX_RX_BUF_SIZE, DMA_FROM_DEVICE);
+					 ag->rx_buf_size, DMA_FROM_DEVICE);
 			kfree(ring->buf[i].rx_buf);
 		}
 }
@@ -217,15 +217,15 @@ static bool ag71xx_fill_rx_buf(struct ag71xx *ag, struct ag71xx_buf *buf,
 {
 	void *data;
 
-	data = kmalloc(AG71XX_RX_BUF_SIZE +
+	data = kmalloc(ag->rx_buf_size +
 		       SKB_DATA_ALIGN(sizeof(struct skb_shared_info)),
 		       GFP_ATOMIC);
 	if (!data)
 		return false;
 
 	buf->rx_buf = data;
-	buf->dma_addr = dma_map_single(&ag->dev->dev, data,
-				       AG71XX_RX_BUF_SIZE, DMA_FROM_DEVICE);
+	buf->dma_addr = dma_map_single(&ag->dev->dev, data, ag->rx_buf_size,
+				       DMA_FROM_DEVICE);
 	buf->desc->data = (u32) buf->dma_addr + offset;
 	return true;
 }
@@ -434,7 +434,7 @@ static void ag71xx_hw_setup(struct ag71xx *ag)
 		  MAC_CFG2_PAD_CRC_EN | MAC_CFG2_LEN_CHECK);
 
 	/* setup max frame length */
-	ag71xx_wr(ag, AG71XX_REG_MAC_MFL, AG71XX_TX_MTU_LEN);
+	ag71xx_wr(ag, AG71XX_REG_MAC_MFL, ag->max_frame_len);
 
 	/* setup FIFO configuration registers */
 	ag71xx_wr(ag, AG71XX_REG_FIFO_CFG0, FIFO_CFG0_INIT);
@@ -608,6 +608,8 @@ static int ag71xx_open(struct net_device *dev)
 {
 	struct ag71xx *ag = netdev_priv(dev);
 	int ret;
+
+	ag->rx_buf_size = ag->max_frame_len + NET_SKB_PAD + NET_IP_ALIGN;
 
 	ret = ag71xx_rings_init(ag);
 	if (ret)
@@ -890,7 +892,7 @@ static int ag71xx_rx_packets(struct ag71xx *ag, int limit)
 		pktlen -= ETH_FCS_LEN;
 
 		dma_unmap_single(&dev->dev, ring->buf[i].dma_addr,
-				 AG71XX_RX_BUF_SIZE, DMA_FROM_DEVICE);
+				 ag->rx_buf_size, DMA_FROM_DEVICE);
 
 		dev->stats.rx_packets++;
 		dev->stats.rx_bytes += pktlen;
@@ -1048,8 +1050,10 @@ static void ag71xx_netpoll(struct net_device *dev)
 
 static int ag71xx_change_mtu(struct net_device *dev, int new_mtu)
 {
+	struct ag71xx *ag = netdev_priv(dev);
+
 	if (new_mtu < 68 ||
-	    new_mtu > AG71XX_TX_MTU_LEN - ETH_HLEN - ETH_FCS_LEN)
+	    new_mtu > ag->max_frame_len - ETH_HLEN - ETH_FCS_LEN)
 		return -EINVAL;
 
 	dev->mtu = new_mtu;
@@ -1163,6 +1167,8 @@ static int ag71xx_probe(struct platform_device *pdev)
 
 	ag->tx_ring.size = AG71XX_TX_RING_SIZE_DEFAULT;
 	ag->rx_ring.size = AG71XX_RX_RING_SIZE_DEFAULT;
+
+	ag->max_frame_len = AG71XX_TX_MTU_LEN;
 
 	ag->stop_desc = dma_alloc_coherent(NULL,
 		sizeof(struct ag71xx_desc), &ag->stop_desc_dma, GFP_KERNEL);
