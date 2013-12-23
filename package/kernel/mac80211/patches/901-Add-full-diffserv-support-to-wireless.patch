@@ -1,26 +1,8 @@
-From 49d71471f5cacd9da711be1942d48357e3fc292b Mon Sep 17 00:00:00 2001
-From: Dave Taht <dave.taht@bufferbloat.net>
-Date: Sun, 15 Dec 2013 22:48:56 -0800
-Subject: [PATCH] wireless: update diffserv patch for better diffserv
-
----
- net/wireless/util.c |   73 +++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 71 insertions(+), 2 deletions(-)
-
 diff --git a/net/wireless/util.c b/net/wireless/util.c
-index f5ad4d9..87e09d5 100644
+index 935dea9..9e2b927 100644
 --- a/net/wireless/util.c
 +++ b/net/wireless/util.c
-@@ -14,6 +14,8 @@
- #include "rdev-ops.h"
- 
- 
-+/* VI, VO, BE, BK */
-+
- struct ieee80211_rate *
- ieee80211_get_response_rate(struct ieee80211_supported_band *sband,
- 			    u32 basic_rates, int bitrate)
-@@ -658,10 +660,77 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+@@ -688,27 +688,79 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
  }
  EXPORT_SYMBOL(ieee80211_amsdu_to_8023s);
  
@@ -71,7 +53,7 @@ index f5ad4d9..87e09d5 100644
 +	 0, /* 0x2b Undefined */
 +	 4, /* VA = 0x2c */
 +	 0, /* 0x2d Undefined */
-+	 6, /* EF = 0x2e */
++	 5, /* EF = 0x2e */
 +	 0, /* 0x2f Undefined */
 +	 5, /* CS6 = 0x30 */
 +	 0, /* 0x31 Undefined */
@@ -94,12 +76,28 @@ index f5ad4d9..87e09d5 100644
  /* Given a data frame determine the 802.1p/1d tag to use. */
  unsigned int cfg80211_classify8021d(struct sk_buff *skb)
  {
--	unsigned int dscp;
-+	unsigned char dscp;
+ 	unsigned int dscp;
+ 	unsigned char vlan_priority;
  
- 	/* skb->priority values from 256->263 are magic values to
- 	 * directly indicate a specific 802.1d priority.  This is used
-@@ -682,7 +751,7 @@ unsigned int cfg80211_classify8021d(struct sk_buff *skb)
+-	/* skb->priority values from 256->263 are magic values to
+-	 * directly indicate a specific 802.1d priority.  This is used
+-	 * to allow 802.1d priority to be passed directly in from VLAN
+-	 * tags, etc.
+-	 */
+-	if (skb->priority >= 256 && skb->priority <= 263)
+-		return skb->priority - 256;
+-
+-	if (vlan_tx_tag_present(skb)) {
+-		vlan_priority = (vlan_tx_tag_get(skb) & VLAN_PRIO_MASK)
+-			>> VLAN_PRIO_SHIFT;
+-		if (vlan_priority > 0)
+-			return vlan_priority;
+-	}
+-
+ 	switch (skb->protocol) {
+ 	case htons(ETH_P_IP):
+ 		dscp = ipv4_get_dsfield(ip_hdr(skb)) & 0xfc;
+@@ -720,7 +772,7 @@ unsigned int cfg80211_classify8021d(struct sk_buff *skb)
  		return 0;
  	}
  
@@ -108,6 +106,3 @@ index f5ad4d9..87e09d5 100644
  }
  EXPORT_SYMBOL(cfg80211_classify8021d);
  
--- 
-1.7.9.5
-
