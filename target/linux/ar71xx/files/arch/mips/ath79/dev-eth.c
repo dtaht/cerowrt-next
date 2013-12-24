@@ -254,13 +254,8 @@ void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
 		mdio_data->is_ar934x = 1;
 		break;
 
-	case ATH79_SOC_QCA9558:
-		if (id == 1)
-			mdio_data->builtin_switch = 1;
-		mdio_data->is_ar934x = 1;
-		break;
-
 	case ATH79_SOC_QCA9556:
+	case ATH79_SOC_QCA9558:
 		mdio_data->is_ar934x = 1;
 		break;
 
@@ -985,6 +980,17 @@ void __init ath79_register_eth(unsigned int id)
 		pdata->ddr_flush = ath79_ddr_no_flush;
 		pdata->has_gbit = 1;
 		pdata->is_ar724x = 1;
+
+		/*
+		 * Limit the maximum frame length to 4095 bytes.
+		 * Although the documentation says that the hardware
+		 * limit is 16383 bytes but that does not work in
+		 * practice. It seems that the hardware only updates
+		 * the lowest 12 bits of the packet length field
+		 * in the RX descriptor.
+		 */
+		pdata->max_frame_len = SZ_4K - 1;
+		pdata->desc_pktlen_mask = SZ_16K - 1;
 
 		if (!pdata->fifo_cfg1)
 			pdata->fifo_cfg1 = 0x0010ffff;
