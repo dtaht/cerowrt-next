@@ -13,7 +13,7 @@ PKG_RELEASE:=1
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=git://github.com/linux-sunxi/u-boot-sunxi
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-PKG_SOURCE_VERSION:=8a4621c488f33089d831168bfa5bae210a5684c8
+PKG_SOURCE_VERSION:=b322f6723d59b9bb88701991c7b8b15867bf3692
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
 
@@ -45,7 +45,11 @@ define uboot/A20-OLinuXino_MICRO
   TITLE:=U-Boot 2013.10-rc2 for A20 Olinuxino
 endef
 
-UBOOTS:=A13-OLinuXino Cubieboard Cubieboard2 A20-OLinuXino_MICRO Hackberry
+define uboot/pcDuino
+  TITLE:=U-Boot 2013.10-rc2 for pcDuino
+endef  
+
+UBOOTS:=A13-OLinuXino Cubieboard Cubieboard2 A20-OLinuXino_MICRO Hackberry pcDuino
 
 define Package/uboot/template
 define Package/uboot-sunxi-$(1)
