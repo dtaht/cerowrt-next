@@ -1,0 +1,35 @@
+From 4f55df81d69d20230e18c90d772904372b2b90a4 Mon Sep 17 00:00:00 2001
+From: Jonas Gorski <jogo@openwrt.org>
+Date: Wed, 8 Jan 2014 11:55:08 +0100
+Subject: [PATCH] allow dhcp range construction with non-permanent addresses
+
+The linux kernel treats all addresses with a limited lifetime as being
+non permanent, but when taking over the prefix livetimes from upstream
+assigned prefixes through DHCP, addresses will always have a limited
+lifetime.
+Still reject temporary addresses, as they indicate autoconfigured
+interfaces.
+
+Contributed by T-Labs, Deutsche Telekom Innovation Laboratories
+
+Signed-off-by: Jonas Gorski <jogo@openwrt.org>
+---
+ src/netlink.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/netlink.c b/src/netlink.c
+index 3be94ee..d5de4ab 100644
+--- a/src/netlink.c
++++ b/src/netlink.c
+@@ -265,7 +265,7 @@ int iface_enumerate(int family, void *parm, int (*callback)())
+ 		    if (ifa->ifa_flags & IFA_F_DEPRECATED)
+ 		      flags |= IFACE_DEPRECATED;
+ 
+-		    if (ifa->ifa_flags & IFA_F_PERMANENT)
++		    if (!(ifa->ifa_flags & IFA_F_TEMPORARY))
+ 		      flags |= IFACE_PERMANENT;
+ 		    
+ 		    if (addrp && callback_ok)
+-- 
+1.8.5.2
+
