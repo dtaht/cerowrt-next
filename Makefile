@@ -1,109 +1,115 @@
-# Makefile for OpenWrt
-#
-# Copyright (C) 2007 OpenWrt.org
+# 
+# Copyright (C) 2006-2013 OpenWrt.org
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
 
-TOPDIR:=${CURDIR}
-LC_ALL:=C
-LANG:=C
-export TOPDIR LC_ALL LANG
+include $(TOPDIR)/rules.mk
 
-empty:=
-space:= $(empty) $(empty)
-$(if $(findstring $(space),$(TOPDIR)),$(error ERROR: The path to the OpenWrt directory must not include any spaces))
+PKG_NAME:=busybox
+PKG_VERSION:=1.19.4
+PKG_RELEASE:=7
+PKG_FLAGS:=essential
 
-world:
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
+PKG_SOURCE_URL:=http://www.busybox.net/downloads \
+		http://distfiles.gentoo.org/distfiles/
+PKG_MD5SUM:=9c0cae5a0379228e7b55e5b29528df8e
 
-include $(TOPDIR)/include/host.mk
+PKG_BUILD_DEPENDS:=BUSYBOX_USE_LIBRPC:librpc
+PKG_BUILD_PARALLEL:=1
 
-ifneq ($(OPENWRT_BUILD),1)
-  # XXX: these three lines are normally defined by rules.mk
-  # but we can't include that file in this context
-  empty:=
-  space:= $(empty) $(empty)
-  _SINGLE=export MAKEFLAGS=$(space);
+PKG_LICENSE:=GPLv2 BSD-4c
+PKG_LICENSE_FILES:=LICENSE archival/libarchive/bz/LICENSE
 
-  override OPENWRT_BUILD=1
-  export OPENWRT_BUILD
-  GREP_OPTIONS=
-  export GREP_OPTIONS
-  include $(TOPDIR)/include/debug.mk
-  include $(TOPDIR)/include/depends.mk
-  include $(TOPDIR)/include/toplevel.mk
+include $(INCLUDE_DIR)/package.mk
+
+ifeq ($(DUMP),)
+  STAMP_CONFIGURED:=$(strip $(STAMP_CONFIGURED))_$(shell $(SH_FUNC) grep '^CONFIG_BUSYBOX_' $(TOPDIR)/.config | md5s)
+endif
+
+ifneq ($(findstring c,$(OPENWRT_VERBOSE)),)
+  BB_MAKE_VERBOSE := V=1
 else
-  include rules.mk
-  include $(INCLUDE_DIR)/depends.mk
-  include $(INCLUDE_DIR)/subdir.mk
-  include target/Makefile
-  include package/Makefile
-  include tools/Makefile
-  include toolchain/Makefile
-
-$(toolchain/stamp-install): $(tools/stamp-install)
-$(target/stamp-compile): $(toolchain/stamp-install) $(tools/stamp-install) $(BUILD_DIR)/.prepared
-$(package/stamp-compile): $(target/stamp-compile) $(package/stamp-cleanup)
-$(package/stamp-install): $(package/stamp-compile)
-$(target/stamp-install): $(package/stamp-compile) $(package/stamp-install)
-
-printdb:
-	@true
-
-prepare: $(target/stamp-compile)
-
-clean: FORCE
-	rm -rf $(BUILD_DIR) $(BIN_DIR) $(BUILD_LOG_DIR)
-
-dirclean: clean
-	rm -rf $(STAGING_DIR) $(STAGING_DIR_HOST) $(STAGING_DIR_TOOLCHAIN) $(TOOLCHAIN_DIR) $(BUILD_DIR_HOST) $(BUILD_DIR_TOOLCHAIN)
-	rm -rf $(TMP_DIR)
-
-ifndef DUMP_TARGET_DB
-$(BUILD_DIR)/.prepared: Makefile
-	@mkdir -p $$(dirname $@)
-	@touch $@
-
-tmp/.prereq_packages: .config
-	unset ERROR; \
-	for package in $(sort $(prereq-y) $(prereq-m)); do \
-		$(_SINGLE)$(NO_TRACE_MAKE) -s -r -C package/$$package prereq || ERROR=1; \
-	done; \
-	if [ -n "$$ERROR" ]; then \
-		echo "Package prerequisite check failed."; \
-		false; \
-	fi
-	touch $@
+  BB_MAKE_VERBOSE :=
 endif
 
-# check prerequisites before starting to build
-prereq: $(target/stamp-prereq) tmp/.prereq_packages
-	@if [ ! -f "$(INCLUDE_DIR)/site/$(REAL_GNU_TARGET_NAME)" ]; then \
-		echo 'ERROR: Missing site config for target "$(REAL_GNU_TARGET_NAME)" !'; \
-		echo '       The missing file will cause configure scripts to fail during compilation.'; \
-		echo '       Please provide a "$(INCLUDE_DIR)/site/$(REAL_GNU_TARGET_NAME)" file and restart the build.'; \
-		exit 1; \
-	fi
+define Package/busybox
+  SECTION:=base
+  CATEGORY:=Base system
+  MAINTAINER:=Felix Fietkau <nbd@openwrt.org>
+  TITLE:=Core utilities for embedded Linux
+  URL:=http://busybox.net/
+  DEPENDS:=+BUSYBOX_USE_LIBRPC:librpc
+  MENU:=1
+endef
 
-prepare: .config $(tools/stamp-install) $(toolchain/stamp-install)
-world: prepare $(target/stamp-compile) $(package/stamp-compile) $(package/stamp-install) $(target/stamp-install) FORCE
-	$(_SINGLE)$(SUBMAKE) -r package/index
+define Package/busybox/description
+ The Swiss Army Knife of embedded Linux.
+ It slices, it dices, it makes Julian Fries.
+endef
 
-# update all feeds, re-create index files, install symlinks
-package/symlinks:
-	$(SCRIPT_DIR)/feeds update -a
-	$(SCRIPT_DIR)/feeds install -a
+define Package/busybox/config
+	source "$(SOURCE)/Config.in"
+endef
 
-# re-create index files, install symlinks
-package/symlinks-install:
-	$(SCRIPT_DIR)/feeds update -i
-	$(SCRIPT_DIR)/feeds install -a
+BUSYBOX_SYM=$(if $(CONFIG_BUSYBOX_CUSTOM),CONFIG,DEFAULT)
 
-# remove all symlinks, don't touch ./feeds
-package/symlinks-clean:
-	$(SCRIPT_DIR)/feeds uninstall -a
+define Build/Configure
+	rm -f $(PKG_BUILD_DIR)/.configured*
+	grep 'CONFIG_BUSYBOX_$(BUSYBOX_SYM)' $(TOPDIR)/.config | sed -e "s,\\(# \)\\?CONFIG_BUSYBOX_$(BUSYBOX_SYM)_\\(.*\\),\\1CONFIG_\\2,g" > $(PKG_BUILD_DIR)/.config
+	yes 'n' | $(MAKE) -C $(PKG_BUILD_DIR) \
+		CC="$(TARGET_CC)" \
+		CROSS_COMPILE="$(TARGET_CROSS)" \
+		KBUILD_HAVE_NLS=no \
+		ARCH="$(ARCH)" \
+		$(BB_MAKE_VERBOSE) \
+		oldconfig
+endef
 
-.PHONY: clean dirclean prereq prepare world package/symlinks package/symlinks-install package/symlinks-clean
-
+ifdef CONFIG_GCC_VERSION_LLVM
+  TARGET_CFLAGS += -fnested-functions
 endif
+
+LDLIBS:=m crypt
+ifdef CONFIG_BUSYBOX_USE_LIBRPC
+  TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include
+  export LDFLAGS=$(TARGET_LDFLAGS)
+  LDLIBS += rpc
+endif
+
+define Build/Compile
+	+$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
+		CC="$(TARGET_CC)" \
+		CROSS_COMPILE="$(TARGET_CROSS)" \
+		KBUILD_HAVE_NLS=no \
+		EXTRA_CFLAGS="$(TARGET_CFLAGS)" \
+		ARCH="$(ARCH)" \
+		SKIP_STRIP=y \
+		LDLIBS="$(LDLIBS)" \
+		$(BB_MAKE_VERBOSE) \
+		all
+	rm -rf $(PKG_INSTALL_DIR)
+	$(FIND) $(PKG_BUILD_DIR) -lname "*busybox" -exec rm \{\} \;
+	$(MAKE) -C $(PKG_BUILD_DIR) \
+		CC="$(TARGET_CC)" \
+		CROSS_COMPILE="$(TARGET_CROSS)" \
+		EXTRA_CFLAGS="$(TARGET_CFLAGS)" \
+		ARCH="$(ARCH)" \
+		CONFIG_PREFIX="$(PKG_INSTALL_DIR)" \
+		LDLIBS="$(LDLIBS)" \
+		$(BB_MAKE_VERBOSE) \
+		install
+endef
+
+define Package/busybox/install
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(CP) $(PKG_INSTALL_DIR)/* $(1)/
+	$(INSTALL_BIN) ./files/cron $(1)/etc/init.d/cron
+	$(INSTALL_BIN) ./files/telnet $(1)/etc/init.d/telnet
+	$(INSTALL_BIN) ./files/sysntpd $(1)/etc/init.d/sysntpd
+	-rm -rf $(1)/lib64
+endef
+
+$(eval $(call BuildPackage,busybox))
