@@ -20,7 +20,7 @@ drv_mac80211_init_device_config() {
 	config_add_string path phy macaddr
 	config_add_string hwmode
 	config_add_int beacon_int chanbw frag rts
-	config_add_int rxantenna txantenna antenna_gain txpower
+	config_add_int rxantenna txantenna antenna_gain txpower distance
 	config_add_boolean noscan
 	config_add_array ht_capab
 }
@@ -241,7 +241,7 @@ mac80211_setup_supplicant() {
 }
 
 mac80211_setup_adhoc() {
-	json_get_vars bssid ssid basic_rate key mcast_rate
+	json_get_vars bssid ssid key mcast_rate
 
 	keyspec=
 	[ "$auth_type" == "wep" ] && {
@@ -266,7 +266,7 @@ mac80211_setup_adhoc() {
 	}
 
 	brstr=
-	for br in $basic_rate; do
+	for br in $basic_rate_list; do
 		hostapd_add_rate brstr "$br"
 	done
 
@@ -352,6 +352,7 @@ drv_mac80211_setup() {
 		txpower antenna_gain \
 		rxantenna txantenna \
 		frag rts beacon_int
+	json_get_values basic_rate_list basic_rate
 	json_select ..
 
 	find_phy || {
