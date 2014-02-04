@@ -225,9 +225,15 @@ define KernelPackage/fs-nfs
 	CONFIG_NFS_FS \
 	CONFIG_NFS_USE_LEGACY_DNS=n \
 	CONFIG_NFS_USE_NEW_IDMAPPER=n
+ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,3.6.0)),1)
+  FILES:= \
+	$(LINUX_DIR)/fs/nfs/nfs.ko \
+	$(LINUX_DIR)/fs/nfs/nfsv3.ko
+else
   FILES:= \
 	$(LINUX_DIR)/fs/nfs/nfs.ko
-  AUTOLOAD:=$(call AutoLoad,40,nfs)
+endif
+  AUTOLOAD:=$(call AutoLoad,40,nfs nfsv3)
 endef
 
 define KernelPackage/fs-nfs/description
